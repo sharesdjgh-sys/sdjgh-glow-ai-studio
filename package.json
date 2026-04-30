@@ -1,0 +1,29 @@
+{
+  "name": "sdjgh-glow-ai-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@types/react-webcam": "^1.1.0",
+    "html2canvas": "^1.4.1",
+    "next": "16.2.4",
+    "openai": "^6.35.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-webcam": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.13",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5"
+  }
+}
