@@ -1,235 +1,501 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import WebcamCapture from "@/components/WebcamCapture";
-import DownloadButton from "@/components/DownloadButton";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import html2canvas from "html2canvas";
+import Icon from "@/components/glow/Icon";
+import FauxPortrait from "@/components/glow/FauxPortrait";
+import KioskHeader from "@/components/glow/KioskHeader";
+import EmailSender from "@/components/glow/EmailSender";
+import PrivacyChip from "@/components/glow/PrivacyChip";
+import WebcamCapture from "@/components/glow/WebcamCapture";
+
+const FEATURE = {
+  en: "Star Me",
+  ko: "연예인과 인생사진",
+  desc: "내가 좋아하는 연예인과 함께 찍은 듯한 사진을 만들어드려요",
+  api: "Grok",
+  tag: "AI 인생샷 합성",
+  accent: "var(--sun)",
+  accentDeep: "var(--sun-deep)",
+  accentSoft: "var(--sun-soft)",
+  accentTint: "var(--sun-tint)",
+};
 
 const CELEBRITIES = [
-  "아이유 (IU)",
-  "BTS 뷔",
-  "블랙핑크 지수",
-  "차은우",
-  "김태리",
-  "뉴진스 민지",
-  "에스파 카리나",
-  "정해인",
-  "손예진",
-  "공유",
+  "아이유 (IU)", "BTS 뷔", "블랙핑크 지수", "차은우",
+  "김태리", "뉴진스 민지", "에스파 카리나", "정해인", "손예진", "공유",
 ];
 
+const LOADING_PHASES = ["얼굴 특징 분석 중…", "딱 맞는 연예인 찾는 중…", "인생샷 합성 중…"];
+
+type Step = "intro" | "capture" | "confirm" | "loading" | "result";
+const STEPS: Step[] = ["intro", "capture", "confirm", "loading", "result"];
+
 export default function StarMePage() {
-  const [step, setStep] = useState<"capture" | "select" | "loading" | "result">("capture");
-  const [captured, setCaptured] = useState<string | null>(null);
-  const [celebrity, setCelebrity] = useState<string>("");
+  const router = useRouter();
+  const [step, setStep] = useState<Step>("intro");
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [celebrity, setCelebrity] = useState("");
+  const [customInput, setCustomInput] = useState("");
+  const [celebrityImage, setCelebrityImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCapture = (imageSrc: string) => {
-    setCaptured(imageSrc);
-  };
+  const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
+  const chosenLabel = chosen || (celebrityImage ? "업로드한 연예인" : "");
+  const isReady = !!chosen || !!celebrityImage;
 
-  const handleProceedToSelect = () => {
-    if (captured) setStep("select");
-  };
+  const handleCapture = (snap: string | null) => { setSnapshot(snap); setStep("confirm"); };
 
   const handleGenerate = async () => {
-    if (!captured || !celebrity) return;
+    if (!isReady) return;
     setStep("loading");
     setError(null);
     try {
       const res = await fetch("/api/star-me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: captured, celebrity }),
+        body: JSON.stringify({ imageBase64: snapshot, celebrity: chosen, celebrityImageBase64: celebrityImage }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
       setResultImage(data.imageUrl);
       setStep("result");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-      setStep("select");
+      setError(err instanceof Error ? err.message : "오류가 발생했어요");
+      setStep("confirm");
     }
   };
 
-  return (
-    <main className="min-h-screen bg-[#0a0015] relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-violet-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-indigo-600/20 rounded-full blur-3xl" />
-      </div>
+  const handleBack = () => {
+    if (step === "result") setStep("intro");
+    else if (step === "confirm") setStep("capture");
+    else if (step === "capture") setStep("intro");
+  };
 
-      <div className="relative max-w-sm mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-black text-white">Star Me ⭐</h1>
-            <p className="text-white/50 text-sm">연예인과 인생사진</p>
-          </div>
+  return (
+    <div className="kiosk-stage">
+      <KioskHeader
+        onBack={step === "intro" || step === "loading" ? undefined : handleBack}
+        onHome={() => router.push("/")}
+        step={STEPS.indexOf(step)}
+        total={5}
+        label={FEATURE.ko}
+      />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {step === "intro"   && <Intro onStart={() => setStep("capture")} />}
+        {step === "capture" && <Capture onCapture={handleCapture} />}
+        {step === "confirm" && (
+          <ConfirmWithSelect
+            snapshot={snapshot} error={error}
+            celebrity={celebrity} setCelebrity={setCelebrity}
+            customInput={customInput} setCustomInput={setCustomInput}
+            celebrityImage={celebrityImage} setCelebrityImage={setCelebrityImage}
+            onRetake={() => setStep("capture")} onGenerate={handleGenerate}
+          />
+        )}
+        {step === "loading" && <Loading celebrity={chosenLabel} />}
+        {step === "result" && resultImage && (
+          <Result resultImage={resultImage} snapshot={snapshot} celebrity={chosenLabel}
+            onRestart={() => setStep("intro")} onHome={() => router.push("/")} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ─── INTRO ──────────────────────────────────────────────────────────────────
+
+function Intro({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="fade-up" style={{
+      flex: 1, display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 64,
+      alignItems: "center", padding: "48px 80px", maxWidth: 1440, margin: "0 auto", width: "100%",
+    }}>
+      <div>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px",
+          background: FEATURE.accentSoft, color: FEATURE.accentDeep,
+          borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 700,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: FEATURE.accent, display: "inline-block" }} />
+          {FEATURE.tag}
         </div>
 
-        {/* Step indicators */}
-        <div className="flex items-center gap-2 mb-8">
-          {["capture", "select", "result"].map((s, i) => (
-            <div key={s} className="flex items-center gap-2 flex-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                step === s
-                  ? "bg-gradient-to-br from-violet-500 to-indigo-500 text-white scale-110"
-                  : (["capture", "select", "result"].indexOf(step) > i)
-                    ? "bg-green-500 text-white"
-                    : "bg-white/20 text-white/50"
-              }`}>
-                {["capture", "select", "result"].indexOf(step) > i ? "✓" : i + 1}
+        <div className="t-en" style={{ marginTop: 28, fontSize: 32, color: FEATURE.accentDeep, lineHeight: 1.2 }}>
+          {FEATURE.en}
+        </div>
+        <h1 style={{ margin: "12px 0 0", fontSize: 56, fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1.18, paddingBottom: 4 }}>
+          {FEATURE.ko}
+        </h1>
+        <p style={{ marginTop: 20, fontSize: 19, color: "var(--ink-2)", maxWidth: 520, lineHeight: 1.55, wordBreak: "keep-all" }}>
+          {FEATURE.desc}
+        </p>
+
+        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 12 }}>
+          {[
+            { n: "01", t: "준비", d: "조명이 잘 비치는 곳에 자리 잡기" },
+            { n: "02", t: "촬영", d: "카운트다운 3초 후 자동 촬영" },
+            { n: "03", t: "선택 & 결과", d: "연예인 선택 후 AI가 합성" },
+          ].map(s => (
+            <div key={s.n} style={{
+              display: "flex", alignItems: "center", gap: 16,
+              padding: "14px 18px",
+              background: FEATURE.accentTint,
+              borderLeft: `4px solid ${FEATURE.accentDeep}`,
+              borderRadius: "var(--r-md)", wordBreak: "keep-all",
+            }}>
+              <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 26, color: FEATURE.accentDeep, width: 36, flexShrink: 0 }}>
+                {s.n}
+              </span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{s.t}</div>
+                <div style={{ fontSize: 14, color: "var(--ink-2)" }}>{s.d}</div>
               </div>
-              {i < 2 && <div className="flex-1 h-0.5 bg-white/20 rounded" />}
             </div>
           ))}
         </div>
 
-        {/* Capture Step */}
-        {step === "capture" && (
-          <div className="flex flex-col items-center gap-6">
-            <p className="text-white/70 text-sm text-center">먼저 셀카를 찍어주세요!</p>
-            <WebcamCapture
-              onCapture={handleCapture}
-              onRetake={() => setCaptured(null)}
-              captured={captured}
-            />
-            {captured && (
-              <button
-                onClick={handleProceedToSelect}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform"
-              >
-                다음 단계 →
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Select Celebrity Step */}
-        {step === "select" && (
-          <div className="flex flex-col gap-5">
-            <div className="text-center">
-              <p className="text-white font-bold text-lg mb-1">함께할 연예인을 선택하세요</p>
-              <p className="text-white/50 text-sm">AI가 함께 사진을 찍은 것처럼 만들어줄게요</p>
-            </div>
-
-            {/* Preview of captured photo */}
-            <div className="flex justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={captured!} alt="내 사진" className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-400/50" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {CELEBRITIES.map((celeb) => (
-                <button
-                  key={celeb}
-                  onClick={() => setCelebrity(celeb)}
-                  className={`py-3 px-4 rounded-2xl text-sm font-semibold transition-all border ${
-                    celebrity === celeb
-                      ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-purple-400 scale-[1.02]"
-                      : "bg-white/10 text-white/80 border-white/20 hover:bg-white/20"
-                  }`}
-                >
-                  {celeb}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom input */}
-            <div>
-              <p className="text-white/50 text-xs mb-2 text-center">또는 직접 입력</p>
-              <input
-                type="text"
-                value={CELEBRITIES.includes(celebrity) ? "" : celebrity}
-                onChange={(e) => setCelebrity(e.target.value)}
-                placeholder="연예인 이름을 입력하세요"
-                className="w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm focus:outline-none focus:border-purple-400"
-              />
-            </div>
-
-            {error && (
-              <div className="px-4 py-3 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={handleGenerate}
-              disabled={!celebrity.trim()}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              인생사진 만들기 ✨
-            </button>
-
-            <button
-              onClick={() => setStep("capture")}
-              className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors border border-white/20"
-            >
-              ← 다시 찍기
-            </button>
-          </div>
-        )}
-
-        {/* Loading Step */}
-        {step === "loading" && (
-          <div className="flex flex-col items-center gap-6 py-16">
-            <div className="relative w-24 h-24">
-              <div className="absolute inset-0 rounded-full border-4 border-purple-400/30" />
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-400 animate-spin" />
-              <div className="absolute inset-4 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-3xl animate-pulse">
-                ⭐
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-white font-bold text-lg">인생사진 생성 중...</p>
-              <p className="text-white/50 text-sm mt-1">{celebrity}와(과) 함께하는 사진을 만들고 있어요</p>
-              <p className="text-white/30 text-xs mt-2">약 15~30초 소요될 수 있어요</p>
-            </div>
-          </div>
-        )}
-
-        {/* Result Step */}
-        {step === "result" && resultImage && (
-          <div className="flex flex-col items-center gap-4">
-            <p className="text-white/70 text-sm text-center">
-              <span className="font-bold text-white">{celebrity}</span>와(과) 함께하는 인생사진 완성!
-            </p>
-
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-purple-400/30 w-full">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resultImage} alt="인생사진 결과" className="w-full" />
-              <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gradient-to-t from-black/60 to-transparent">
-                <p className="text-white text-xs text-center">Glow AI Studio • 정보 교과 체험 부스</p>
-              </div>
-            </div>
-
-            <DownloadButton
-              imageUrl={resultImage}
-              filename={`star-me-${celebrity.replace(/\s/g, "-")}.jpg`}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              저장하고 프린트하기
-            </DownloadButton>
-
-            <button
-              onClick={() => { setStep("capture"); setCaptured(null); setResultImage(null); setCelebrity(""); }}
-              className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors border border-white/20"
-            >
-              처음부터 다시하기
-            </button>
-          </div>
-        )}
+        <div style={{ marginTop: 36, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          <button className="btn btn-rose btn-xl" onClick={onStart}
+            style={{ paddingLeft: 44, paddingRight: 56, gap: 20 }}>
+            <span style={{ whiteSpace: "nowrap" }}>웹캠 켜고 시작하기</span>
+            <Icon name="camera" size={22} stroke={2.2} />
+          </button>
+          <PrivacyChip />
+        </div>
       </div>
-    </main>
+
+      <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+        <div style={{
+          width: "min(100%, 460px)", aspectRatio: "819 / 1024",
+          borderRadius: "var(--r-md)", overflow: "hidden",
+          boxShadow: "var(--shadow-3)",
+        }}>
+          <img
+            src="/star-me-sample.png"
+            alt="인생샷 샘플"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CAPTURE ────────────────────────────────────────────────────────────────
+
+function Capture({ onCapture }: { onCapture: (snap: string | null) => void }) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 64px", gap: 20 }}>
+      <div style={{ textAlign: "center" }}>
+        <div className="t-eyebrow">Step 03</div>
+        <h2 className="t-h1" style={{ margin: "6px 0 0", lineHeight: 1.15 }}>카메라를 보고 활짝!</h2>
+      </div>
+      <WebcamCapture accentColor={FEATURE.accent} onCapture={onCapture} />
+    </div>
+  );
+}
+
+// ─── CONFIRM + SELECT ────────────────────────────────────────────────────────
+
+function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInput, setCustomInput, celebrityImage, setCelebrityImage, onRetake, onGenerate }: {
+  snapshot: string | null; error: string | null;
+  celebrity: string; setCelebrity: (v: string) => void;
+  customInput: string; setCustomInput: (v: string) => void;
+  celebrityImage: string | null; setCelebrityImage: (v: string | null) => void;
+  onRetake: () => void; onGenerate: () => void;
+}) {
+  const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
+  const isReady = !!chosen || !!celebrityImage;
+
+  const handleCelebUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCelebrityImage(ev.target?.result as string);
+      setCelebrity("");
+      setCustomInput("");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <div className="fade-up" style={{
+      flex: 1, display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 48,
+      alignItems: "start", padding: "48px 80px", maxWidth: 1280, margin: "0 auto", width: "100%",
+    }}>
+      {/* Left: snapshot */}
+      <div style={{
+        position: "sticky", top: 100,
+        borderRadius: "var(--r-2xl)", overflow: "hidden",
+        aspectRatio: "4/5", boxShadow: "var(--shadow-3)", border: `3px solid ${FEATURE.accent}`,
+      }}>
+        {snapshot
+          ? <img src={snapshot} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <FauxPortrait palette={["#FDE3E8", "#FFB3CC", "#FF6B8B"]} hair="#2A1F25" />
+        }
+        <div style={{
+          position: "absolute", top: 16, left: 16, padding: "6px 12px",
+          background: "rgba(255,255,255,0.92)", color: "var(--ink)",
+          borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 700,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+        }}>
+          촬영 완료
+        </div>
+      </div>
+
+      {/* Right: celebrity selection */}
+      <div>
+        <div className="t-eyebrow">Step 03</div>
+        <h2 className="t-h1" style={{ marginTop: 8 }}>함께할 연예인을 골라주세요</h2>
+        <p className="t-body" style={{ marginTop: 12 }}>
+          AI가 함께 사진을 찍은 것처럼 만들어줄게요.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginTop: 24 }}>
+          {CELEBRITIES.map(c => (
+            <button key={c} onClick={() => { setCelebrity(c); setCustomInput(""); setCelebrityImage(null); }}
+              style={{
+                padding: "12px 14px", textAlign: "left",
+                borderRadius: "var(--r-md)", cursor: "pointer",
+                background: celebrity === c ? "var(--ink)" : "var(--paper)",
+                color: celebrity === c ? "white" : "var(--ink)",
+                border: celebrity === c ? "1px solid var(--ink)" : "1px solid var(--hairline)",
+                fontSize: 15, fontWeight: 700,
+                transition: "all 180ms var(--ease)",
+              }}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, color: "var(--ink-3)", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            또는 직접 입력
+          </div>
+          <input
+            type="text"
+            value={customInput}
+            onChange={e => { setCustomInput(e.target.value); setCelebrity(""); setCelebrityImage(null); }}
+            placeholder="연예인 이름을 입력하세요"
+            style={{
+              width: "100%", padding: "14px 18px",
+              borderRadius: "var(--r-lg)", border: "1.5px solid var(--hairline-2)",
+              fontSize: 16, fontFamily: "var(--font-sans)", outline: "none",
+              background: "var(--paper)", color: "var(--ink)",
+            }}
+          />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, color: "var(--ink-3)", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            또는 연예인 사진 업로드
+          </div>
+          <label style={{ cursor: "pointer", display: "block" }}>
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCelebUpload} />
+            {celebrityImage ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--r-lg)", border: `1.5px solid ${FEATURE.accent}`, background: FEATURE.accentSoft }}>
+                <img src={celebrityImage} alt="연예인 사진" style={{ width: 56, height: 56, borderRadius: "var(--r-md)", objectFit: "cover", flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>사진 업로드됨</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-3)" }}>다른 사진을 선택하려면 클릭</div>
+                </div>
+                <button
+                  onClick={e => { e.preventDefault(); setCelebrityImage(null); }}
+                  style={{ padding: "4px 8px", borderRadius: "var(--r-md)", border: "none", background: "rgba(0,0,0,0.08)", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div style={{ padding: "16px 18px", borderRadius: "var(--r-lg)", border: "1.5px dashed var(--hairline-2)", display: "flex", alignItems: "center", gap: 12, background: "var(--canvas-tint)", color: "var(--ink-2)" }}>
+                <Icon name="upload" size={20} stroke={2} />
+                <span style={{ fontSize: 15, fontWeight: 600 }}>연예인 사진 업로드</span>
+              </div>
+            )}
+          </label>
+        </div>
+
+        {error && (
+          <div style={{ marginTop: 16, padding: "14px 18px", background: "#FFF0F0", borderRadius: "var(--r-lg)", color: "#C0392B", fontSize: 14, fontWeight: 600 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost btn-xl" onClick={onRetake}>
+            <Icon name="refresh" size={20} stroke={2.2} /> 다시 촬영
+          </button>
+          <button className="btn btn-rose btn-xl" onClick={onGenerate} disabled={!isReady}
+            style={{ opacity: isReady ? 1 : 0.5 }}>
+            인생사진 만들기 <Icon name="sparkles" size={20} stroke={2.2} />
+          </button>
+        </div>
+
+        <div style={{ marginTop: 20, padding: "14px 18px", background: "var(--mint-soft)", borderRadius: "var(--r-lg)", color: "var(--mint-deep)", fontSize: 14, display: "flex", alignItems: "center", gap: 10, fontWeight: 600 }}>
+          <Icon name="lock" size={16} stroke={2.2} />
+          사진은 결과 생성에만 사용되고, 서버에 저장되지 않아요.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LOADING ────────────────────────────────────────────────────────────────
+
+function Loading({ celebrity }: { celebrity: string }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPhase(p => (p + 1) % LOADING_PHASES.length), 1100);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32, padding: 40 }}>
+      <div style={{ position: "relative", width: 220, height: 220 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: `conic-gradient(from 0deg, var(--sun), var(--sun-deep), var(--rose), var(--sun))`,
+          animation: "spin 2.4s linear infinite", filter: "blur(2px)",
+        }} />
+        <div style={{ position: "absolute", inset: 16, borderRadius: "50%", background: "var(--canvas)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span className="t-en" style={{ fontSize: 48, color: "var(--sun-deep)" }}>AI</span>
+        </div>
+        <div style={{ position: "absolute", inset: -12, borderRadius: "50%", boxShadow: "var(--shadow-glow-sun)" }} />
+      </div>
+
+      <div style={{ textAlign: "center" }}>
+        <div className="t-eyebrow" style={{ color: "var(--sun-deep)" }}>{FEATURE.en}</div>
+        <h2 className="t-h1" style={{ marginTop: 8 }}>당신만의 결과를 만드는 중…</h2>
+        <p className="t-body" key={phase} style={{ marginTop: 12, animation: "fadeUp 360ms var(--ease) both" }}>
+          {celebrity}와(과)의 {LOADING_PHASES[phase]}
+        </p>
+      </div>
+
+      <div style={{ width: 360, height: 6, borderRadius: 99, background: "var(--hairline)", overflow: "hidden", position: "relative" }}>
+        <div style={{
+          position: "absolute", height: "100%", width: "45%", borderRadius: 99,
+          background: `linear-gradient(90deg, transparent, var(--sun-deep), var(--sun))`,
+          animation: "indeterminate 1.6s cubic-bezier(0.65,0.815,0.735,0.395) infinite",
+        }} />
+        <div style={{
+          position: "absolute", height: "100%", width: "25%", borderRadius: 99,
+          background: `linear-gradient(90deg, transparent, var(--sun))`,
+          animation: "indeterminate2 1.6s cubic-bezier(0.165,0.84,0.44,1) 0.8s infinite",
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── RESULT ─────────────────────────────────────────────────────────────────
+
+function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
+  resultImage: string; snapshot: string | null; celebrity: string;
+  onRestart: () => void; onHome: () => void;
+}) {
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handleDownload = async () => {
+    if (!printRef.current) return;
+    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const link = document.createElement("a");
+    link.download = `star-me-${celebrity.replace(/\s/g, "-")}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  const handlePrint = async () => {
+    if (!printRef.current) return;
+    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const dataUrl = canvas.toDataURL("image/png");
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>Star Me 결과</title>
+    <style>
+      @page { size: A4 portrait; margin: 0; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 210mm; height: 297mm; background: #fff; }
+      img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
+    </style>
+  </head>
+  <body>
+    <img src="${dataUrl}" />
+    <script>window.onload = () => { window.print(); window.close(); }<\/script>
+  </body>
+</html>`);
+    win.document.close();
+  };
+
+  return (
+    <div className="fade-up" style={{ padding: "0 24px 64px" }}>
+      <div style={{ textAlign: "center", padding: "32px 40px 16px" }}>
+        <div className="t-eyebrow" style={{ color: "var(--sun-deep)", fontSize: 22 }}>{FEATURE.en}</div>
+        <h1 style={{ margin: "6px 0 0", fontSize: 44, fontWeight: 800, letterSpacing: "-0.02em" }}>완성됐어요! ✨</h1>
+        <p className="t-body" style={{ marginTop: 6 }}>다운로드하거나 바로 프린트해서 가져가세요.</p>
+      </div>
+
+      <div style={{ maxWidth: 700, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+        <div ref={printRef} className="print-frame" style={{ padding: 28, background: "#FFFFFF" }}>
+          {/* Header — outside the image */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <div className="t-en" style={{ color: "var(--sun-deep)", fontSize: 14 }}>Glow AI Studio · Star Me</div>
+              {celebrity && (
+                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>with {celebrity}</div>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink-3)", fontFamily: "monospace" }}>
+              {new Date().toLocaleDateString("ko-KR")}
+            </div>
+          </div>
+
+          {/* Generated image — A4 portrait ratio */}
+          <div style={{
+            width: "100%", aspectRatio: "1 / 1.414",
+            borderRadius: "var(--r-md)", overflow: "hidden",
+            border: "1px solid var(--hairline)",
+          }}>
+            <img src={resultImage} alt="인생사진 결과" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        </div>
+
+        {/* 이메일 전송 */}
+        <EmailSender
+          imageBase64={resultImage}
+          featureName={FEATURE.en}
+          featureKo={FEATURE.ko}
+        />
+
+        {/* Actions */}
+        <div style={{
+          display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
+          padding: "20px 24px", background: "var(--paper)",
+          borderRadius: "var(--r-2xl)", border: "1px solid var(--hairline)", boxShadow: "var(--shadow-2)",
+        }}>
+          <button className="btn btn-rose btn-lg" onClick={handleDownload}>
+            <Icon name="download" size={20} stroke={2.2} /> 다운로드
+          </button>
+          <button className="btn btn-primary btn-lg" onClick={handlePrint}>
+            <Icon name="printer" size={20} stroke={2.2} /> 프린트
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-ghost btn-lg" onClick={onRestart}>
+            <Icon name="refresh" size={18} /> 다시하기
+          </button>
+          <button className="btn btn-ghost btn-lg" onClick={onHome}>
+            처음으로
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

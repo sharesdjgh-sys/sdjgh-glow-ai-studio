@@ -15,30 +15,36 @@ export async function POST(request: NextRequest) {
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp-image-generation",
+      model: "gemini-3.1-flash-image-preview",
       generationConfig: {
         // @ts-expect-error - responseModalities is valid for image generation models
         responseModalities: ["IMAGE", "TEXT"],
       },
     });
 
-    const prompt = `Create a single 3x3 grid collage image (portrait 4:5 ratio) of a Pixar/Disney 3D animated character based on this person's facial features.
+    const prompt = `Create a 3x3 grid collage image in A4 portrait orientation (ratio 1:1.414) rendered in Unreal Engine 5 / Octane Render style.
 
-The 3x3 grid must show exactly 9 panels, each with the SAME character showing a DIFFERENT emotion:
-Row 1: 놀람(Surprise) | 짜증(Annoyance) | 혼란(Confusion)
-Row 2: 좌절(Frustration) | 사려깊음(Thoughtful) | 빈정거림(Sarcasm)
-Row 3: 걱정(Worry) | 지루함(Boredom) | 호기심(Curiosity)
+FACE PRESERVATION — CRITICAL: Meticulously replicate the exact face from the reference photo. Copy the precise eye shape, nose bridge, lip shape, jawline, cheekbones, skin tone, hair color, and hair style. The character must be immediately recognizable as the same person. Do not alter or idealize facial features.
 
-Style requirements:
-- Pixar/Disney 3D animation style, high-quality render
-- Pure white background for each panel
-- 3-point studio lighting
-- Each panel: character centered, bust shot (head and upper body)
-- Each panel has the emotion label in Korean at the bottom in a clean sans-serif font
-- Thin light gray border between panels
-- Character maintains consistent appearance across all 9 panels
-- Expressive, exaggerated emotions characteristic of Pixar animation
-- Suitable for printing at high quality`;
+CHARACTER: Head-to-body ratio 1:3 (chibi-influenced Pixar scale). Exaggerated large eyes for readability while preserving the person's unique eye shape. Clothing consistent with the reference image. Subsurface scattering skin shader, polished finish.
+
+GRID — 9 equal panels arranged in 3 columns × 3 rows, same character, 9 different emotions:
+Row 1:
+  Cell 1 — Surprised: hands touching cheeks, wide eyes, O-shaped mouth
+  Cell 2 — Annoyed: arms crossed, sharp side-eye, furrowed brow
+  Cell 3 — Confused: head tilted 45 degrees, one hand scratching head
+Row 2:
+  Cell 4 — Frustrated: facepalming with one hand, clenched jaw
+  Cell 5 — Thoughtful: finger on chin, looking up, dreaming expression
+  Cell 6 — Sarcastic: raised eyebrow, smirk, one eye slightly squinted
+Row 3:
+  Cell 7 — Worried: biting nails, hunched shoulders, dilated pupils
+  Cell 8 — Bored: chin resting in palm, heavy eyelids, neutral mouth
+  Cell 9 — Curious: leaning toward camera, magnifying glass gesture
+
+LAYOUT: Portrait A4 format. Each panel has a solid pure white background, zero shadows, isolated figure. Thin light gray border between panels. Three-point studio lighting per panel.
+
+NEGATIVE CONSTRAINTS: No text, no labels, no logos, no speech bubbles, no UI overlays.`;
 
     const result = await model.generateContent([
       prompt,

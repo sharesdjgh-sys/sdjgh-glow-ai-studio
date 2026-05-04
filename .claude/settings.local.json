@@ -7,7 +7,14 @@
       "Bash(npx tsc *)",
       "Bash(npm run *)",
       "Bash(pkill -f \"next dev\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cp \"C:\\\\Users\\\\LifeProfessor\\\\.claude\\\\projects\\\\D--Programming-study-sdjgh-glow-ai-studio\\\\7f982439-06a3-448e-b39b-fd13e7c0d7d4\\\\tool-results\\\\webfetch-1777591343479-3jeloe.bin\" /tmp/design.gz)",
+      "Bash(gunzip -c /tmp/design.gz)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p design_bundle)",
+      "Bash(tar -xzf design.gz -C design_bundle)",
+      "Bash(cygpath -w /tmp/design_bundle/glow-ai-studio/project/styles.css)"
     ]
   }
 }

@@ -1,0 +1,25 @@
+{
+  "name": "Glow AI Studio",
+  "short_name": "Glow AI",
+  "description": "서대전여고 정보 교과 부스 · AI로 나만의 스타일을 발견해요",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF0F5",
+  "theme_color": "#FF6B8B",
+  "orientation": "portrait",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

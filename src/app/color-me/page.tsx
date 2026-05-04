@@ -1,255 +1,374 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Link from "next/link";
-import WebcamCapture from "@/components/WebcamCapture";
-import html2canvas from "html2canvas";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Icon from "@/components/glow/Icon";
+import FauxPortrait from "@/components/glow/FauxPortrait";
+import KioskHeader from "@/components/glow/KioskHeader";
+import PrivacyChip from "@/components/glow/PrivacyChip";
+import WebcamCapture from "@/components/glow/WebcamCapture";
+import EmailSender from "@/components/glow/EmailSender";
 
 interface ColorResult {
-  colorType: string;
-  colorTypeEn: string;
-  description: string;
-  bestColors: { name: string; hex: string }[];
-  avoidColors: { name: string; hex: string }[];
-  fashionKeywords: string[];
-  lipColor: string;
-  eyeshadowColor: string;
-  celebrities: string[];
+  imageUrl: string;
 }
 
-const seasonConfig: Record<string, { emoji: string; gradient: string; bg: string }> = {
-  "봄 웜톤": { emoji: "🌸", gradient: "from-yellow-300 to-orange-300", bg: "from-yellow-50 to-orange-50" },
-  "여름 쿨톤": { emoji: "❄️", gradient: "from-blue-300 to-purple-300", bg: "from-blue-50 to-purple-50" },
-  "가을 웜톤": { emoji: "🍂", gradient: "from-orange-400 to-red-400", bg: "from-orange-50 to-red-50" },
-  "겨울 쿨톤": { emoji: "🌊", gradient: "from-indigo-400 to-blue-600", bg: "from-indigo-50 to-blue-50" },
+const FEATURE = {
+  id: "color",
+  en: "Color Me",
+  ko: "퍼스널 컬러 인포그래픽",
+  desc: "내 피부톤·눈동자·머리카락을 분석해서 어울리는 컬러 팔레트를 알려줘요",
+  api: "ChatGPT",
+  tag: "AI 퍼스널 컬러 분석",
+  accent: "var(--lavender)",
+  accentDeep: "var(--lavender-deep)",
+  accentSoft: "var(--lavender-soft)",
+  accentTint: "var(--lavender-tint)",
 };
 
+
+const LOADING_PHASES = ["피부톤 분석 중…", "퍼스널 컬러 매칭 중…", "팔레트 그리는 중…"];
+
+type Step = "intro" | "capture" | "confirm" | "loading" | "result";
+const STEPS: Step[] = ["intro", "capture", "confirm", "loading", "result"];
+
 export default function ColorMePage() {
-  const [step, setStep] = useState<"capture" | "loading" | "result">("capture");
-  const [captured, setCaptured] = useState<string | null>(null);
+  const router = useRouter();
+  const [step, setStep] = useState<Step>("intro");
+  const [snapshot, setSnapshot] = useState<string | null>(null);
   const [result, setResult] = useState<ColorResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const infographicRef = useRef<HTMLDivElement>(null);
 
-  const handleCapture = (imageSrc: string) => {
-    setCaptured(imageSrc);
-  };
+  const handleCapture = (snap: string | null) => { setSnapshot(snap); setStep("confirm"); };
 
-  const handleAnalyze = async () => {
-    if (!captured) return;
+  const handleConfirm = async () => {
     setStep("loading");
     setError(null);
     try {
       const res = await fetch("/api/color-me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: captured }),
+        body: JSON.stringify({ imageBase64: snapshot }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "분석 실패");
       setResult(data);
       setStep("result");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-      setStep("capture");
+      setError(err instanceof Error ? err.message : "오류가 발생했어요");
+      setStep("confirm");
     }
   };
 
-  const handleDownload = async () => {
-    if (!infographicRef.current) return;
-    const canvas = await html2canvas(infographicRef.current, {
-      scale: 2,
-      backgroundColor: null,
-      useCORS: true,
-    });
+  const handleBack = () => {
+    if (step === "result") setStep("intro");
+    else if (step === "confirm") setStep("capture");
+    else if (step === "capture") setStep("intro");
+  };
+
+  return (
+    <div className="kiosk-stage">
+      <KioskHeader
+        onBack={step === "intro" || step === "loading" ? undefined : handleBack}
+        onHome={() => router.push("/")}
+        step={STEPS.indexOf(step)}
+        total={5}
+        label={FEATURE.ko}
+      />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {step === "intro"   && <Intro onStart={() => setStep("capture")} />}
+        {step === "capture" && <Capture onCapture={handleCapture} />}
+        {step === "confirm" && (
+          <Confirm snapshot={snapshot} error={error}
+            onRetake={() => setStep("capture")} onConfirm={handleConfirm} />
+        )}
+        {step === "loading" && <Loading />}
+        {step === "result" && result && (
+          <Result result={result}
+            onRestart={() => setStep("intro")} onHome={() => router.push("/")} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ─── INTRO ──────────────────────────────────────────────────────────────────
+
+function Intro({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="fade-up" style={{
+      flex: 1, display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 64,
+      alignItems: "center", padding: "48px 80px", maxWidth: 1440, margin: "0 auto", width: "100%",
+    }}>
+      <div>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px",
+          background: FEATURE.accentSoft, color: FEATURE.accentDeep,
+          borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 700,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: FEATURE.accent, display: "inline-block" }} />
+          {FEATURE.tag}
+        </div>
+
+        <div className="t-en" style={{ marginTop: 28, fontSize: 32, color: FEATURE.accentDeep, lineHeight: 1.2 }}>
+          {FEATURE.en}
+        </div>
+        <h1 style={{ margin: "12px 0 0", fontSize: 56, fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1.18, paddingBottom: 4 }}>
+          {FEATURE.ko}
+        </h1>
+        <p style={{ marginTop: 20, fontSize: 19, color: "var(--ink-2)", maxWidth: 520, lineHeight: 1.55, wordBreak: "keep-all" }}>
+          {FEATURE.desc}
+        </p>
+
+        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 12 }}>
+          {[
+            { n: "01", t: "준비", d: "조명이 잘 비치는 곳에 자리 잡기" },
+            { n: "02", t: "촬영", d: "카운트다운 3초 후 자동 촬영" },
+            { n: "03", t: "결과", d: "AI가 만들어주는 팔레트를 프린트" },
+          ].map(s => (
+            <div key={s.n} style={{
+              display: "flex", alignItems: "center", gap: 16,
+              padding: "14px 18px",
+              background: FEATURE.accentTint,
+              borderLeft: `4px solid ${FEATURE.accentDeep}`,
+              borderRadius: "var(--r-md)", wordBreak: "keep-all",
+            }}>
+              <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 26, color: FEATURE.accentDeep, width: 36, flexShrink: 0 }}>
+                {s.n}
+              </span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{s.t}</div>
+                <div style={{ fontSize: 14, color: "var(--ink-2)" }}>{s.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 36, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          <button className="btn btn-rose btn-xl" onClick={onStart}
+            style={{ paddingLeft: 44, paddingRight: 56, gap: 20 }}>
+            <span style={{ whiteSpace: "nowrap" }}>웹캠 켜고 시작하기</span>
+            <Icon name="camera" size={22} stroke={2.2} />
+          </button>
+          <PrivacyChip />
+        </div>
+      </div>
+
+      <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+        <div style={{
+          width: "min(100%, 460px)", aspectRatio: "4/5",
+          borderRadius: "var(--r-md)", overflow: "hidden",
+          background: FEATURE.accentTint, boxShadow: "var(--shadow-3)", position: "relative",
+        }}>
+          <img
+            src="/color-me-sample.png"
+            alt="퍼스널 컬러 분석 샘플"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CAPTURE ────────────────────────────────────────────────────────────────
+
+function Capture({ onCapture }: { onCapture: (snap: string | null) => void }) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 64px", gap: 20 }}>
+      <div style={{ textAlign: "center" }}>
+        <div className="t-eyebrow">Step 02</div>
+        <h2 className="t-h1" style={{ margin: "6px 0 0", lineHeight: 1.15 }}>카메라를 보고 활짝!</h2>
+      </div>
+      <WebcamCapture accentColor={FEATURE.accent} onCapture={onCapture} />
+    </div>
+  );
+}
+
+// ─── CONFIRM ────────────────────────────────────────────────────────────────
+
+function Confirm({ snapshot, error, onRetake, onConfirm }: {
+  snapshot: string | null; error: string | null;
+  onRetake: () => void; onConfirm: () => void;
+}) {
+  return (
+    <div className="fade-up" style={{
+      flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64,
+      alignItems: "center", padding: "48px 80px", maxWidth: 1280, margin: "0 auto", width: "100%",
+    }}>
+      <div style={{
+        position: "relative", borderRadius: "var(--r-2xl)", overflow: "hidden",
+        aspectRatio: "4/5", boxShadow: "var(--shadow-3)", border: `3px solid ${FEATURE.accent}`,
+      }}>
+        {snapshot
+          ? <img src={snapshot} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <FauxPortrait palette={["#FDE3E8", "#FFB3CC", "#FF6B8B"]} hair="#2A1F25" />
+        }
+        <div style={{
+          position: "absolute", top: 16, left: 16, padding: "6px 12px",
+          background: "rgba(255,255,255,0.92)", color: "var(--ink)",
+          borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 700,
+          letterSpacing: "0.06em", textTransform: "uppercase",
+        }}>
+          촬영 완료
+        </div>
+      </div>
+
+      <div>
+        <div className="t-eyebrow">Step 03</div>
+        <h2 className="t-h1" style={{ marginTop: 8 }}>이 사진으로 진행할까요?</h2>
+        <p className="t-body" style={{ marginTop: 12 }}>
+          마음에 들면 <strong>이대로 진행</strong>을, 다시 찍고 싶으면 <strong>다시 촬영</strong>을 눌러주세요.
+          결과 생성은 보통 20~40초 정도 걸려요.
+        </p>
+
+        {error && (
+          <div style={{
+            marginTop: 16, padding: "14px 18px",
+            background: "#FFF0F0", borderRadius: "var(--r-lg)",
+            color: "#C0392B", fontSize: 14, fontWeight: 600,
+          }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ marginTop: 28, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost btn-xl" onClick={onRetake}>
+            <Icon name="refresh" size={20} stroke={2.2} /> 다시 촬영
+          </button>
+          <button className="btn btn-rose btn-xl" onClick={onConfirm}>
+            이대로 진행하기 <Icon name="arrow-right" size={20} stroke={2.2} />
+          </button>
+        </div>
+
+        <div style={{
+          marginTop: 24, padding: "14px 18px",
+          background: "var(--mint-soft)", borderRadius: "var(--r-lg)",
+          color: "var(--mint-deep)", fontSize: 14,
+          display: "flex", alignItems: "center", gap: 10, fontWeight: 600,
+        }}>
+          <Icon name="lock" size={16} stroke={2.2} />
+          사진은 결과 생성에만 사용되고, 서버에 저장되지 않아요.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LOADING ────────────────────────────────────────────────────────────────
+
+function Loading() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPhase(p => (p + 1) % LOADING_PHASES.length), 1100);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 32, padding: 40, position: "relative",
+    }}>
+      <div style={{ position: "relative", width: 220, height: 220 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: `conic-gradient(from 0deg, var(--lavender), var(--lavender-deep), var(--rose), var(--lavender))`,
+          animation: "spin 2.4s linear infinite",
+          filter: "blur(2px)",
+        }} />
+        <div style={{
+          position: "absolute", inset: 16, borderRadius: "50%", background: "var(--canvas)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <span className="t-en" style={{ fontSize: 48, color: "var(--lavender-deep)" }}>AI</span>
+        </div>
+        <div style={{ position: "absolute", inset: -12, borderRadius: "50%", boxShadow: "var(--shadow-glow-lavender)" }} />
+      </div>
+
+      <div style={{ textAlign: "center" }}>
+        <div className="t-eyebrow" style={{ color: "var(--lavender-deep)" }}>{FEATURE.en}</div>
+        <h2 className="t-h1" style={{ marginTop: 8 }}>당신만의 결과를 만드는 중…</h2>
+        <p className="t-body" key={phase} style={{ marginTop: 12, animation: "fadeUp 360ms var(--ease) both" }}>
+          {LOADING_PHASES[phase]}
+        </p>
+      </div>
+
+      <div style={{ width: 360, height: 6, borderRadius: 99, background: "var(--hairline)", overflow: "hidden", position: "relative" }}>
+        <div style={{
+          position: "absolute", height: "100%", width: "45%", borderRadius: 99,
+          background: `linear-gradient(90deg, transparent, var(--lavender-deep), var(--lavender))`,
+          animation: "indeterminate 1.6s cubic-bezier(0.65,0.815,0.735,0.395) infinite",
+        }} />
+        <div style={{
+          position: "absolute", height: "100%", width: "25%", borderRadius: 99,
+          background: `linear-gradient(90deg, transparent, var(--lavender))`,
+          animation: "indeterminate2 1.6s cubic-bezier(0.165,0.84,0.44,1) 0.8s infinite",
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── RESULT ─────────────────────────────────────────────────────────────────
+
+function Result({ result, onRestart, onHome }: {
+  result: ColorResult;
+  onRestart: () => void; onHome: () => void;
+}) {
+  const handleDownload = () => {
     const link = document.createElement("a");
     link.download = "color-me-result.png";
-    link.href = canvas.toDataURL("image/png");
+    link.href = result.imageUrl;
     link.click();
   };
 
-  const config = result ? (seasonConfig[result.colorType] ?? seasonConfig["봄 웜톤"]) : null;
-
   return (
-    <main className="min-h-screen bg-[#0a0015] relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-orange-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-rose-600/20 rounded-full blur-3xl" />
+    <div className="fade-up" style={{ padding: "0 24px 64px" }}>
+      <div style={{ textAlign: "center", padding: "32px 40px 16px" }}>
+        <div className="t-eyebrow" style={{ color: "var(--lavender-deep)", fontSize: 22 }}>{FEATURE.en}</div>
+        <h1 style={{ margin: "6px 0 0", fontSize: 44, fontWeight: 800, letterSpacing: "-0.02em" }}>완성됐어요! ✨</h1>
+        <p className="t-body" style={{ marginTop: 6 }}>다운로드하거나 바로 프린트해서 가져가세요.</p>
       </div>
 
-      <div className="relative max-w-sm mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-black text-white">Color Me 🎨</h1>
-            <p className="text-white/50 text-sm">퍼스널 컬러 분석</p>
-          </div>
+      <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+        <div className="print-frame" style={{ borderRadius: "var(--r-2xl)", overflow: "hidden", boxShadow: "var(--shadow-3)" }}>
+          <img
+            src={result.imageUrl}
+            alt="퍼스널 컬러 분석 결과"
+            style={{ width: "100%", height: "auto", display: "block" }}
+          />
         </div>
 
-        {/* Capture Step */}
-        {step === "capture" && (
-          <div className="flex flex-col items-center gap-6">
-            <div className="text-center">
-              <p className="text-white/70 text-sm">셀카를 찍으면 AI가 퍼스널 컬러를 분석해줄게요</p>
-            </div>
-            <WebcamCapture
-              onCapture={handleCapture}
-              onRetake={() => setCaptured(null)}
-              captured={captured}
-            />
-            {error && (
-              <div className="w-full px-4 py-3 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm text-center">
-                {error}
-              </div>
-            )}
-            {captured && (
-              <button
-                onClick={handleAnalyze}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-400 via-pink-400 to-rose-400 text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform"
-              >
-                퍼스널 컬러 분석하기 ✨
-              </button>
-            )}
-          </div>
-        )}
+        {/* 이메일 전송 */}
+        <EmailSender
+          imageBase64={result.imageUrl}
+          featureName={FEATURE.en}
+          featureKo={FEATURE.ko}
+        />
 
-        {/* Loading Step */}
-        {step === "loading" && (
-          <div className="flex flex-col items-center gap-6 py-16">
-            <div className="relative w-24 h-24">
-              <div className="absolute inset-0 rounded-full border-4 border-orange-400/30" />
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-400 animate-spin" />
-              <div className="absolute inset-4 rounded-full bg-gradient-to-br from-orange-400 to-rose-400 flex items-center justify-center text-3xl animate-pulse">
-                🎨
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-white font-bold text-lg">퍼스널 컬러 분석 중...</p>
-              <p className="text-white/50 text-sm mt-1">AI가 열심히 분석하고 있어요</p>
-            </div>
-          </div>
-        )}
-
-        {/* Result Step */}
-        {step === "result" && result && config && (
-          <div className="flex flex-col gap-4">
-            {/* Infographic (for download) */}
-            <div
-              ref={infographicRef}
-              className={`rounded-3xl overflow-hidden bg-gradient-to-br ${config.bg} p-6 border border-white/20`}
-              style={{ background: "linear-gradient(135deg, #fff8f0, #fff0f5)" }}
-            >
-              {/* Header section */}
-              <div className="text-center mb-5">
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${config.gradient} mb-3`}>
-                  <span className="text-lg">{config.emoji}</span>
-                  <span className="text-white font-black text-lg">{result.colorType}</span>
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed">{result.description}</p>
-              </div>
-
-              {/* Best colors */}
-              <div className="mb-5">
-                <h3 className="text-gray-800 font-bold text-sm mb-2 flex items-center gap-1">
-                  <span>✅</span> 어울리는 색상
-                </h3>
-                <div className="grid grid-cols-6 gap-2">
-                  {result.bestColors.map((c, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1">
-                      <div
-                        className="w-10 h-10 rounded-full shadow-md border-2 border-white"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      <span className="text-gray-600 text-[9px] text-center leading-tight">{c.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Avoid colors */}
-              <div className="mb-5">
-                <h3 className="text-gray-800 font-bold text-sm mb-2 flex items-center gap-1">
-                  <span>❌</span> 피해야 할 색상
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {result.avoidColors.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white/60 rounded-xl px-2 py-1.5">
-                      <div
-                        className="w-6 h-6 rounded-full flex-shrink-0 border border-gray-200"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      <span className="text-gray-600 text-[10px]">{c.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Makeup */}
-              <div className="mb-5 flex gap-3">
-                <div className="flex-1 bg-white/60 rounded-2xl p-3 text-center">
-                  <p className="text-gray-500 text-[10px] mb-1">💄 립 컬러</p>
-                  <div
-                    className="w-8 h-8 rounded-full mx-auto border-2 border-white shadow"
-                    style={{ backgroundColor: result.lipColor }}
-                  />
-                </div>
-                <div className="flex-1 bg-white/60 rounded-2xl p-3 text-center">
-                  <p className="text-gray-500 text-[10px] mb-1">👁️ 아이섀도우</p>
-                  <div
-                    className="w-8 h-8 rounded-full mx-auto border-2 border-white shadow"
-                    style={{ backgroundColor: result.eyeshadowColor }}
-                  />
-                </div>
-                <div className="flex-1 bg-white/60 rounded-2xl p-3 text-center">
-                  <p className="text-gray-500 text-[10px] mb-2">👗 스타일</p>
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {result.fashionKeywords.map((kw, i) => (
-                      <span key={i} className="text-[8px] bg-white rounded-full px-1.5 py-0.5 text-gray-600">{kw}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Celebrities */}
-              <div className="bg-white/60 rounded-2xl p-3">
-                <p className="text-gray-500 text-[10px] mb-1">🌟 같은 톤 셀럽</p>
-                <div className="flex flex-wrap gap-1">
-                  {result.celebrities.map((c, i) => (
-                    <span key={i} className="text-xs font-semibold text-gray-700 bg-white rounded-full px-2 py-0.5 border border-gray-200">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-center text-gray-400 text-[9px] mt-4">Glow AI Studio • 정보 교과 체험 부스</p>
-            </div>
-
-            {/* Action buttons */}
-            <button
-              onClick={handleDownload}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-400 via-pink-400 to-rose-400 text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              저장하고 프린트하기
-            </button>
-
-            <button
-              onClick={() => { setStep("capture"); setCaptured(null); setResult(null); }}
-              className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors border border-white/20"
-            >
-              다시 분석하기
-            </button>
-          </div>
-        )}
+        <div style={{
+          display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
+          padding: "20px 24px", background: "var(--paper)",
+          borderRadius: "var(--r-2xl)", border: "1px solid var(--hairline)", boxShadow: "var(--shadow-2)",
+        }}>
+          <button className="btn btn-rose btn-lg" onClick={handleDownload}>
+            <Icon name="download" size={20} stroke={2.2} /> 다운로드
+          </button>
+          <button className="btn btn-primary btn-lg" onClick={() => window.print()}>
+            <Icon name="printer" size={20} stroke={2.2} /> 프린트
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-ghost btn-lg" onClick={onRestart}>
+            <Icon name="refresh" size={18} /> 다시하기
+          </button>
+          <button className="btn btn-ghost btn-lg" onClick={onHome}>
+            처음으로
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

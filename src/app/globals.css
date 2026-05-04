@@ -2,26 +2,255 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  html {
-    font-family: var(--font-noto), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  }
+/* =============================================================
+   Glow AI Studio — Design Tokens
+   ============================================================= */
+:root {
+  /* Brand: pastel beauty palette */
+  --rose:        #FF6B8B;
+  --rose-deep:   #E8456E;
+  --rose-soft:   #FFE3EA;
+  --rose-tint:   #FFF4F7;
 
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
+  --lavender:    #B79CFF;
+  --lavender-deep:#7C5BFF;
+  --lavender-soft:#EFE7FF;
+  --lavender-tint:#F7F2FF;
+
+  --mint:        #6FE3CD;
+  --mint-deep:   #1FB89A;
+  --mint-soft:   #DCFAF2;
+  --mint-tint:   #EEFCF7;
+
+  --sun:         #FFD66B;
+  --sun-deep:    #F0B400;
+  --sun-soft:    #FFF1C9;
+  --sun-tint:    #FFF8E1;
+
+  --peach:       #FFB48F;
+  --peach-soft:  #FFE5D6;
+
+  /* Surface */
+  --canvas:      #FDF0F5;
+  --canvas-tint: #F7E8EF;
+  --hairline:    #ECE6E2;
+  --hairline-2:  #DDD6D0;
+  --paper:       #FFFFFF;
+
+  /* Ink */
+  --ink:         #1B1419;
+  --ink-2:       #4A3D44;
+  --ink-3:       #837381;
+  --ink-4:       #B8A9B3;
+
+  /* Type */
+  --font-sans:   'Pretendard', 'Pretendard Variable', 'Inter', -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
+  --font-display:'Fraunces', 'Pretendard', serif;
+
+  /* Radii */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-2xl: 44px;
+  --r-pill: 9999px;
+
+  /* Spacing (8pt) */
+  --s-2: 2px;  --s-4: 4px;  --s-6: 6px;  --s-8: 8px;
+  --s-12: 12px; --s-16: 16px; --s-20: 20px;
+  --s-24: 24px; --s-32: 32px; --s-40: 40px;
+  --s-48: 48px; --s-64: 64px; --s-80: 80px;
+
+  /* Elevation */
+  --shadow-1: 0 2px 8px rgba(229, 90, 120, 0.06);
+  --shadow-2:
+    rgba(229, 90, 120, 0.04) 0 0 0 1px,
+    rgba(229, 90, 120, 0.06) 0 4px 12px 0,
+    rgba(229, 90, 120, 0.10) 0 8px 24px -4px;
+  --shadow-3:
+    rgba(229, 90, 120, 0.04) 0 0 0 1px,
+    rgba(229, 90, 120, 0.08) 0 8px 20px 0,
+    rgba(229, 90, 120, 0.14) 0 18px 48px -8px;
+  --shadow-glow-rose:    0 0 0 6px rgba(255, 107, 139, 0.18);
+  --shadow-glow-lavender:0 0 0 6px rgba(183, 156, 255, 0.20);
+  --shadow-glow-mint:    0 0 0 6px rgba(111, 227, 205, 0.22);
+  --shadow-glow-sun:     0 0 0 6px rgba(255, 214, 107, 0.24);
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 220ms;
 }
 
-@layer utilities {
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
+@layer base {
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body, #root {
+    margin: 0; padding: 0;
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    word-break: keep-all;
   }
 
-  .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  body {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.45;
+    background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(255, 107, 139, 0.18), transparent 60%),
+    radial-gradient(900px 600px at 0% 100%, rgba(183, 156, 255, 0.16), transparent 60%),
+    radial-gradient(700px 500px at 50% 60%, rgba(111, 227, 205, 0.09), transparent 60%),
+    var(--canvas);
+    min-height: 100vh;
   }
 
-  .glass-dark {
-    @apply bg-black/20 backdrop-blur-md border border-white/10;
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; }
+  img { display: block; max-width: 100%; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer components {
+  /* Type roles */
+  .t-eyebrow {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    color: var(--rose-deep);
   }
+  .t-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 80px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .t-h1 { font-weight: 800; font-size: 44px; line-height: 1.05; letter-spacing: -0.02em; }
+  .t-h2 { font-weight: 700; font-size: 28px; line-height: 1.15; letter-spacing: -0.015em; }
+  .t-h3 { font-weight: 700; font-size: 20px; line-height: 1.25; letter-spacing: -0.01em; }
+  .t-body { font-weight: 500; font-size: 16px; line-height: 1.5; color: var(--ink-2); }
+  .t-caption { font-weight: 500; font-size: 13px; line-height: 1.35; color: var(--ink-3); letter-spacing: 0.01em; }
+  .t-mono-num { font-family: 'Fraunces', serif; font-weight: 500; font-feature-settings: "tnum" 1, "salt" 1; }
+  .t-en { font-family: var(--font-display); font-style: italic; font-weight: 500; }
+
+  /* Layout */
+  .kiosk-stage { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 28px;
+    border-radius: var(--r-pill);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    transition: transform 150ms var(--ease), background 150ms linear, box-shadow 200ms var(--ease);
+    min-height: 56px;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.96); }
+
+  .btn-primary { background: var(--ink); color: #FFF4F7; }
+  .btn-primary:hover { background: #2C2127; }
+
+  .btn-rose {
+    background: var(--rose);
+    color: white;
+    box-shadow: 0 6px 16px rgba(255, 107, 139, 0.32);
+  }
+  .btn-rose:hover { background: var(--rose-deep); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--hairline-2);
+  }
+  .btn-ghost:hover { background: var(--canvas-tint); border-color: var(--ink-3); }
+
+  .btn-lg { padding: 22px 36px; font-size: 19px; min-height: 68px; }
+  .btn-xl { padding: 28px 44px; font-size: 22px; min-height: 80px; border-radius: var(--r-2xl); }
+
+  .icon-btn {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1px solid var(--hairline);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 150ms var(--ease), background 150ms linear;
+    color: var(--ink);
+  }
+  .icon-btn:active { transform: scale(0.92); }
+  .icon-btn:hover { background: var(--canvas-tint); }
+  .icon-btn-lg { width: 72px; height: 72px; }
+
+  .card { background: var(--paper); border-radius: var(--r-xl); border: 1px solid var(--hairline); }
+
+  .print-frame {
+    background: white;
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Animations */
+  .fade-up { animation: fadeUp 480ms var(--ease) both; }
+  .pop-in  { animation: pop 480ms var(--ease) both; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(160%); }
+  100% { transform: translateX(160%); }
+}
+@keyframes indeterminate2 {
+  0%   { transform: translateX(-150%) scaleX(0.6); }
+  100% { transform: translateX(300%)  scaleX(1); }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(255,107,139,0.45); }
+  100% { box-shadow: 0 0 0 24px rgba(255,107,139,0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
 }
