@@ -12,7 +12,7 @@ import WebcamCapture from "@/components/glow/WebcamCapture";
 
 const FEATURE = {
   en: "Star Me",
-  ko: "연예인과 인생사진",
+  ko: "최애 연예인과 인생사진",
   desc: "내가 좋아하는 연예인과 함께 찍은 듯한 사진을 만들어드려요",
   api: "Grok",
   tag: "AI 인생샷 합성",
@@ -23,8 +23,11 @@ const FEATURE = {
 };
 
 const CELEBRITIES = [
-  "아이유 (IU)", "BTS 뷔", "블랙핑크 지수", "차은우",
-  "김태리", "뉴진스 민지", "에스파 카리나", "정해인", "손예진", "공유",
+  "라이즈 원빈", "스트레이 키즈 현진",
+  "NCT 마크", "제로베이스원 성한빈",
+  "세븐틴 민규", "배우 변우석",
+  "투모로우바이투게더 연준", "아이브 장원영",
+  "엔하이픈 성훈", "에스파 카리나",
 ];
 
 const LOADING_PHASES = ["얼굴 특징 분석 중…", "딱 맞는 연예인 찾는 중…", "인생샷 합성 중…"];
@@ -209,7 +212,7 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
   onRetake: () => void; onGenerate: () => void;
 }) {
   const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
-  const isReady = !!chosen || !!celebrityImage;
+  const isReady = !!chosen || (!!celebrityImage && !!customInput.trim());
 
   const handleCelebUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,7 +221,6 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
     reader.onload = (ev) => {
       setCelebrityImage(ev.target?.result as string);
       setCelebrity("");
-      setCustomInput("");
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -306,7 +308,7 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
                   <div style={{ fontSize: 12, color: "var(--ink-3)" }}>다른 사진을 선택하려면 클릭</div>
                 </div>
                 <button
-                  onClick={e => { e.preventDefault(); setCelebrityImage(null); }}
+                  onClick={e => { e.preventDefault(); setCelebrityImage(null); setCustomInput(""); }}
                   style={{ padding: "4px 8px", borderRadius: "var(--r-md)", border: "none", background: "rgba(0,0,0,0.08)", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
                   ✕
                 </button>
@@ -318,6 +320,22 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
               </div>
             )}
           </label>
+          {celebrityImage && (
+            <input
+              type="text"
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              placeholder="연예인 이름을 입력하세요 (필수)"
+              autoFocus
+              style={{
+                marginTop: 10, width: "100%", padding: "14px 18px",
+                borderRadius: "var(--r-lg)",
+                border: `1.5px solid ${customInput.trim() ? FEATURE.accent : "#E57373"}`,
+                fontSize: 16, fontFamily: "var(--font-sans)", outline: "none",
+                background: "var(--paper)", color: "var(--ink)",
+              }}
+            />
+          )}
         </div>
 
         {error && (
@@ -401,12 +419,10 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handleDownload = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  const handleDownload = () => {
     const link = document.createElement("a");
     link.download = `star-me-${celebrity.replace(/\s/g, "-")}.png`;
-    link.href = canvas.toDataURL("image/png");
+    link.href = resultImage;
     link.click();
   };
 
@@ -458,9 +474,9 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
             </div>
           </div>
 
-          {/* Generated image — A4 portrait ratio */}
+          {/* Generated image — phone portrait ratio (2:3) */}
           <div style={{
-            width: "100%", aspectRatio: "1 / 1.414",
+            width: "100%", aspectRatio: "2 / 3",
             borderRadius: "var(--r-md)", overflow: "hidden",
             border: "1px solid var(--hairline)",
           }}>

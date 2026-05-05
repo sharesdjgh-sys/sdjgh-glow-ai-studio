@@ -25,7 +25,7 @@ const FEATURES = [
     id: "star",
     href: "/star-me",
     en: "Star Me",
-    ko: "연예인과 인생사진",
+    ko: "최애 연예인과 인생사진",
     desc: "내가 좋아하는 연예인과 함께 찍은 듯한 사진을 만들어드려요",
     accent: "var(--sun)",
     accentDeep: "var(--sun-deep)",
