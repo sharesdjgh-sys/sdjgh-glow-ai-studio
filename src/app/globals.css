@@ -254,3 +254,52 @@
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  /* 결과 이미지만 전체 페이지에 꽉 차게 출력 */
+  body * {
+    visibility: hidden;
+  }
+
+  .print-frame,
+  .print-frame * {
+    visibility: visible;
+  }
+
+  .print-frame {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: white !important;
+  }
+
+  .print-frame img {
+    width: auto !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+}

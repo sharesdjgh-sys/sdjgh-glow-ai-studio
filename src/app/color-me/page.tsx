@@ -325,6 +325,27 @@ function Result({ result, onRestart, onHome }: {
     link.click();
   };
 
+  const handlePrint = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>퍼스널 컬러 분석 결과</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  html, body { margin: 0; padding: 0; background: white; width: 100%; height: 100%; }
+  img { display: block; width: auto; height: 100vh; max-width: 100vw; margin: 0 auto; object-fit: contain; }
+</style>
+</head>
+<body>
+<img src="${result.imageUrl}" onload="window.print(); window.close();" />
+</body>
+</html>`);
+    win.document.close();
+  };
+
   return (
     <div className="fade-up" style={{ padding: "0 24px 64px" }}>
       <div style={{ textAlign: "center", padding: "32px 40px 16px" }}>
@@ -357,7 +378,7 @@ function Result({ result, onRestart, onHome }: {
           <button className="btn btn-rose btn-lg" onClick={handleDownload}>
             <Icon name="download" size={20} stroke={2.2} /> 다운로드
           </button>
-          <button className="btn btn-primary btn-lg" onClick={() => window.print()}>
+          <button className="btn btn-primary btn-lg" onClick={handlePrint}>
             <Icon name="printer" size={20} stroke={2.2} /> 프린트
           </button>
           <div style={{ flex: 1 }} />
