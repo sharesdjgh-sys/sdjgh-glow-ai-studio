@@ -57,8 +57,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
     }
     return NextResponse.json({ imageUrl: `data:image/png;base64,${b64}` });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(err);
+
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as { code: string }).code === "moderation_blocked"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "업로드한 사진이 안전 정책에 의해 처리되지 못했습니다. 얼굴이 선명하게 나온 정면 사진으로 다시 시도해 주세요. 선글라스·마스크 착용 사진이나 과도하게 편집된 이미지는 분석이 어려울 수 있습니다.",
+          code: "moderation_blocked",
+        },
+        { status: 422 }
+      );
+    }
+
     return NextResponse.json({ error: "분석에 실패했습니다. 다시 시도해주세요." }, { status: 500 });
   }
 }
