@@ -26,7 +26,6 @@ const FEATURE = {
   accentTint: "var(--lavender-tint)",
 };
 
-
 const LOADING_PHASES = ["피부톤 분석 중…", "퍼스널 컬러 매칭 중…", "팔레트 그리는 중…"];
 
 type Step = "intro" | "capture" | "confirm" | "loading" | "result";
@@ -363,7 +362,6 @@ function Result({ result, onRestart, onHome }: {
           />
         </div>
 
-        {/* 이메일 전송 */}
         <EmailSender
           imageBase64={result.imageUrl}
           featureName={FEATURE.en}

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI, { toFile } from "openai";
 
+export const maxDuration = 120;
+
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(request: NextRequest) {
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
 - 실제 퍼스널컬러 진단 느낌
 - 깔끔하고 프리미엄한 대시보드 디자인
 - 자연스러운 피부 표현, 과한 효과 금지`,
+      quality: "high",
       n: 1,
       size: "1024x1536",
     });
