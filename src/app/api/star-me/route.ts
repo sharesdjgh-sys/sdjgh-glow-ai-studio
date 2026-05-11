@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI, { toFile } from "openai";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const OUTFIT_OVERRIDE =
   "IMPORTANT: If any person in the reference photo is wearing a school uniform (blazer with school emblem, uniform shirt, uniform skirt or trousers), replace it with stylish casual street clothes — e.g. a trendy jacket, jeans, or a fashionable outfit — while keeping their face, hairstyle, and overall appearance identical.";
@@ -27,34 +27,38 @@ export async function POST(request: NextRequest) {
     }
 
     const selfieData = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const selfieBuffer = Buffer.from(selfieData, "base64");
-    const selfieFile = await toFile(selfieBuffer, "selfie.jpg", { type: "image/jpeg" });
-
     const hasCelebImage = !!celebrityImageBase64;
     const prompt = buildPrompt(hasCelebImage, celebrity);
 
-    const images: Awaited<ReturnType<typeof toFile>>[] = [selfieFile];
+    const parts: Part[] = [
+      { text: prompt },
+      { inlineData: { mimeType: "image/jpeg", data: selfieData } },
+    ];
 
     if (hasCelebImage) {
       const celebData = (celebrityImageBase64 as string).replace(/^data:image\/\w+;base64,/, "");
-      const celebBuffer = Buffer.from(celebData, "base64");
-      const celebFile = await toFile(celebBuffer, "celebrity.jpg", { type: "image/jpeg" });
-      images.push(celebFile);
+      parts.push({ inlineData: { mimeType: "image/jpeg", data: celebData } });
     }
 
-    const result = await client.images.edit({
-      model: "gpt-image-2",
-      image: images.length === 1 ? images[0] : images,
-      prompt,
-      n: 1,
-      size: "1024x1536",
+    const model = client.getGenerativeModel({
+      model: "gemini-3.1-flash-image-preview",
     });
 
-    const b64 = result.data?.[0]?.b64_json;
-    if (!b64) {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts }],
+      generationConfig: { responseModalities: ["IMAGE"] } as never,
+    });
+
+    const imgPart = result.response.candidates?.[0]?.content?.parts?.find(
+      (p) => (p as { inlineData?: { data: string; mimeType: string } }).inlineData?.data
+    ) as { inlineData: { data: string; mimeType: string } } | undefined;
+
+    if (!imgPart) {
       return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
     }
-    return NextResponse.json({ imageUrl: `data:image/png;base64,${b64}` });
+
+    const { data, mimeType } = imgPart.inlineData;
+    return NextResponse.json({ imageUrl: `data:${mimeType};base64,${data}` });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "이미지 생성에 실패했습니다. 다시 시도해주세요." }, { status: 500 });
