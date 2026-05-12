@@ -30,6 +30,21 @@ const LOADING_PHASES = ["피부톤 분석 중…", "퍼스널 컬러 매칭 중�
 
 type Step = "intro" | "capture" | "confirm" | "loading" | "result";
 const STEPS: Step[] = ["intro", "capture", "confirm", "loading", "result"];
+type ModelOption = "nanobanana2" | "Duct Tape";
+
+function GeminiLogo({ size = 24 }: { size?: number }) {
+  return (
+    <img src="/logo-gemini.png" alt="Gemini" width={size} height={size}
+      style={{ objectFit: "contain", display: "block" }} />
+  );
+}
+
+function OpenAILogo({ size = 24 }: { size?: number }) {
+  return (
+    <img src="/logo-openai.png" alt="OpenAI" width={size} height={size}
+      style={{ objectFit: "contain", display: "block" }} />
+  );
+}
 
 export default function ColorMePage() {
   const router = useRouter();
@@ -37,6 +52,7 @@ export default function ColorMePage() {
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [result, setResult] = useState<ColorResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [model, setModel] = useState<ModelOption>("Duct Tape");
 
   const handleCapture = (snap: string | null) => { setSnapshot(snap); setStep("confirm"); };
 
@@ -47,7 +63,7 @@ export default function ColorMePage() {
       const res = await fetch("/api/color-me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: snapshot }),
+        body: JSON.stringify({ imageBase64: snapshot, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "분석 실패");
@@ -79,6 +95,7 @@ export default function ColorMePage() {
         {step === "capture" && <Capture onCapture={handleCapture} />}
         {step === "confirm" && (
           <Confirm snapshot={snapshot} error={error}
+            model={model} setModel={setModel}
             onRetake={() => setStep("capture")} onConfirm={handleConfirm} />
         )}
         {step === "loading" && <Loading />}
@@ -187,8 +204,9 @@ function Capture({ onCapture }: { onCapture: (snap: string | null) => void }) {
 
 // ─── CONFIRM ────────────────────────────────────────────────────────────────
 
-function Confirm({ snapshot, error, onRetake, onConfirm }: {
+function Confirm({ snapshot, error, model, setModel, onRetake, onConfirm }: {
   snapshot: string | null; error: string | null;
+  model: ModelOption; setModel: (v: ModelOption) => void;
   onRetake: () => void; onConfirm: () => void;
 }) {
   return (
@@ -232,7 +250,60 @@ function Confirm({ snapshot, error, onRetake, onConfirm }: {
           </div>
         )}
 
-        <div style={{ marginTop: 28, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 13, color: "var(--ink-3)", fontWeight: 600, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            ✨ AI 모델 선택
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => setModel("nanobanana2")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "nanobanana2"
+                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
+                  : "var(--paper)",
+                border: model === "nanobanana2" ? "2px solid #4285F4" : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
+              }}
+            >
+              <GeminiLogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                nanobanana2
+              </span>
+              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
+                Google Gemini
+              </span>
+            </button>
+
+            <button
+              onClick={() => setModel("Duct Tape")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "Duct Tape"
+                  ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+                  : "var(--paper)",
+                border: model === "Duct Tape" ? "2px solid #10a37f" : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "Duct Tape" ? "0 0 0 3px rgba(16,163,127,0.15)" : "none",
+              }}
+            >
+              <OpenAILogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "Duct Tape" ? "#0d8f6e" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                Duct Tape
+              </span>
+              <span style={{ fontSize: 11, color: model === "Duct Tape" ? "#10a37f" : "var(--ink-3)", fontWeight: 500 }}>
+                OpenAI GPT
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <button className="btn btn-ghost btn-xl" onClick={onRetake}>
             <Icon name="refresh" size={20} stroke={2.2} /> 다시 촬영
           </button>

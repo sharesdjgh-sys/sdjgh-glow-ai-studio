@@ -22,6 +22,30 @@ const FEATURE = {
   accentTint: "var(--sun-tint)",
 };
 
+function GeminiLogo({ size = 24 }: { size?: number }) {
+  return (
+    <img
+      src="/logo-gemini.png"
+      alt="Gemini"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain", display: "block" }}
+    />
+  );
+}
+
+function OpenAILogo({ size = 24 }: { size?: number }) {
+  return (
+    <img
+      src="/logo-openai.png"
+      alt="OpenAI"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain", display: "block" }}
+    />
+  );
+}
+
 const CELEBRITIES = [
   "아이브 장원영", "블랙핑크 제니",
   "에스파 카리나", "뉴진스 민지",
@@ -35,6 +59,8 @@ const LOADING_PHASES = ["얼굴 특징 분석 중…", "딱 맞는 연예인 찾
 type Step = "intro" | "capture" | "confirm" | "loading" | "result";
 const STEPS: Step[] = ["intro", "capture", "confirm", "loading", "result"];
 
+type ModelOption = "nanobanana2" | "Duct Tape";
+
 export default function StarMePage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
@@ -44,6 +70,7 @@ export default function StarMePage() {
   const [celebrityImage, setCelebrityImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [model, setModel] = useState<ModelOption>("nanobanana2");
 
   const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
   const chosenLabel = chosen || (celebrityImage ? "업로드한 연예인" : "");
@@ -59,7 +86,7 @@ export default function StarMePage() {
       const res = await fetch("/api/star-me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: snapshot, celebrity: chosen, celebrityImageBase64: celebrityImage }),
+        body: JSON.stringify({ imageBase64: snapshot, celebrity: chosen, celebrityImageBase64: celebrityImage, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
@@ -95,6 +122,7 @@ export default function StarMePage() {
             celebrity={celebrity} setCelebrity={setCelebrity}
             customInput={customInput} setCustomInput={setCustomInput}
             celebrityImage={celebrityImage} setCelebrityImage={setCelebrityImage}
+            model={model} setModel={setModel}
             onRetake={() => setStep("capture")} onGenerate={handleGenerate}
           />
         )}
@@ -204,11 +232,12 @@ function Capture({ onCapture }: { onCapture: (snap: string | null) => void }) {
 
 // ─── CONFIRM + SELECT ────────────────────────────────────────────────────────
 
-function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInput, setCustomInput, celebrityImage, setCelebrityImage, onRetake, onGenerate }: {
+function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInput, setCustomInput, celebrityImage, setCelebrityImage, model, setModel, onRetake, onGenerate }: {
   snapshot: string | null; error: string | null;
   celebrity: string; setCelebrity: (v: string) => void;
   customInput: string; setCustomInput: (v: string) => void;
   celebrityImage: string | null; setCelebrityImage: (v: string | null) => void;
+  model: ModelOption; setModel: (v: ModelOption) => void;
   onRetake: () => void; onGenerate: () => void;
 }) {
   const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
@@ -343,6 +372,65 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
             {error}
           </div>
         )}
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 13, color: "var(--ink-3)", fontWeight: 600, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            ✨ AI 모델 선택
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {/* nanobanana2 — Gemini */}
+            <button
+              onClick={() => setModel("nanobanana2")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "nanobanana2"
+                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
+                  : "var(--paper)",
+                border: model === "nanobanana2"
+                  ? "2px solid #4285F4"
+                  : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
+              }}
+            >
+              <GeminiLogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                nanobanana2
+              </span>
+              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
+                Google Gemini
+              </span>
+            </button>
+
+            {/* Duct Tape — OpenAI */}
+            <button
+              onClick={() => setModel("Duct Tape")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "Duct Tape"
+                  ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+                  : "var(--paper)",
+                border: model === "Duct Tape"
+                  ? "2px solid #10a37f"
+                  : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "Duct Tape" ? "0 0 0 3px rgba(16,163,127,0.15)" : "none",
+              }}
+            >
+              <OpenAILogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "Duct Tape" ? "#0d8f6e" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                Duct Tape
+              </span>
+              <span style={{ fontSize: 11, color: model === "Duct Tape" ? "#10a37f" : "var(--ink-3)", fontWeight: 500 }}>
+                OpenAI GPT
+              </span>
+            </button>
+          </div>
+        </div>
 
         <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <button className="btn btn-ghost btn-xl" onClick={onRetake}>

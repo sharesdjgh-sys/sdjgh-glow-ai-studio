@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI, { toFile } from "openai";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
 export const maxDuration = 120;
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export async function POST(request: NextRequest) {
-  try {
-    const { imageBase64 } = await request.json();
-    if (!imageBase64) {
-      return NextResponse.json({ error: "이미지가 없습니다." }, { status: 400 });
-    }
-
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const imageBuffer = Buffer.from(base64Data, "base64");
-    const imageFile = await toFile(imageBuffer, "portrait.jpg", { type: "image/jpeg" });
-
-    const result = await client.images.edit({
-      model: "gpt-image-2",
-      image: imageFile,
-      prompt: `업로드된 인물 사진을 기반으로 퍼스널 컬러 드레이핑 분석 대시보드를 생성해 줘.
+const COLOR_PROMPT = `업로드된 인물 사진을 기반으로 퍼스널 컬러 드레이핑 분석 대시보드를 생성해 줘.
 모든 텍스트는 한국어로 작성하고, 결과는 9:16 비율의 하나의 이미지로 만들어 줘.
 얼굴 중심으로 피부 톤(밝기, 채도, 언더톤), 눈동자, 머리색, 대비감 분석.
 조명 영향을 고려해 실제 컬러 기준으로 판단. 얼굴 및 원본 이미지는 절대 변경하지 않기.
@@ -49,17 +37,58 @@ export async function POST(request: NextRequest) {
 [스타일]
 - 실제 퍼스널컬러 진단 느낌
 - 깔끔하고 프리미엄한 대시보드 디자인
-- 자연스러운 피부 표현, 과한 효과 금지`,
-      quality: "high",
-      n: 1,
-      size: "1024x1536",
-    });
+- 자연스러운 피부 표현, 과한 효과 금지`;
 
-    const b64 = result.data?.[0]?.b64_json;
-    if (!b64) {
-      return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
+export async function POST(request: NextRequest) {
+  try {
+    const { imageBase64, model } = await request.json();
+    if (!imageBase64) {
+      return NextResponse.json({ error: "이미지가 없습니다." }, { status: 400 });
     }
-    return NextResponse.json({ imageUrl: `data:image/png;base64,${b64}` });
+
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+    let imageUrl: string;
+
+    if (model === "nanobanana2") {
+      const geminiModel = geminiClient.getGenerativeModel({
+        model: "gemini-3.1-flash-image-preview",
+      });
+      const parts: Part[] = [
+        { text: COLOR_PROMPT },
+        { inlineData: { mimeType: "image/jpeg", data: base64Data } },
+      ];
+      const geminiResult = await geminiModel.generateContent({
+        contents: [{ role: "user", parts }],
+        generationConfig: { responseModalities: ["IMAGE"] } as never,
+      });
+      const imgPart = geminiResult.response.candidates?.[0]?.content?.parts?.find(
+        (p) => (p as { inlineData?: { data: string; mimeType: string } }).inlineData?.data
+      ) as { inlineData: { data: string; mimeType: string } } | undefined;
+      if (!imgPart) {
+        return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
+      }
+      const { data, mimeType } = imgPart.inlineData;
+      imageUrl = `data:${mimeType};base64,${data}`;
+    } else {
+      const imageBuffer = Buffer.from(base64Data, "base64");
+      const imageFile = await toFile(imageBuffer, "portrait.jpg", { type: "image/jpeg" });
+      const openaiResult = await openaiClient.images.edit({
+        model: "gpt-image-2",
+        image: imageFile,
+        prompt: COLOR_PROMPT,
+        quality: "high",
+        n: 1,
+        size: "1024x1536",
+      });
+      const b64 = openaiResult.data?.[0]?.b64_json;
+      if (!b64) {
+        return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
+      }
+      imageUrl = `data:image/png;base64,${b64}`;
+    }
+
+    return NextResponse.json({ imageUrl });
   } catch (err: unknown) {
     console.error(err);
 
