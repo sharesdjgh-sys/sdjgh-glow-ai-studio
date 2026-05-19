@@ -171,16 +171,16 @@ function Intro({ onStart }: { onStart: () => void }) {
         </div>
       </div>
 
-      <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
         <div style={{
-          width: "min(100%, 460px)", aspectRatio: "4/5",
+          width: "min(100%, 460px)",
           borderRadius: "var(--r-md)", overflow: "hidden",
-          background: FEATURE.accentTint, boxShadow: "var(--shadow-3)", position: "relative",
+          background: FEATURE.accentTint, boxShadow: "var(--shadow-3)",
         }}>
           <img
             src="/color-me-sample.png"
             alt="퍼스널 컬러 분석 샘플"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{ width: "100%", height: "auto", display: "block" }}
           />
         </div>
       </div>
