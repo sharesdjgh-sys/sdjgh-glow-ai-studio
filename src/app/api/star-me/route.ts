@@ -11,7 +11,7 @@ const QUALITY_SUFFIX =
   "Photorealistic, ultra-detailed, sharp focus, professional photography, natural skin texture, vivid colors, cinematic lighting, 2K quality.";
 
 const OUTFIT_OVERRIDE =
-  "IMPORTANT: If any person in the reference photo is wearing a school uniform (blazer with school emblem, uniform shirt, uniform skirt or trousers), replace it with stylish casual street clothes — e.g. a trendy jacket, jeans, or a fashionable outfit — while keeping their face, hairstyle, and overall appearance identical.";
+  "IMPORTANT: Meticulously preserve the exact facial features, natural age, hairstyle, and unique appearance of the person in the reference photo. Do not make them look older or younger; keep their authentic natural age exactly as shown. Depict them wearing stylish, trendy everyday casual street clothes — such as a fashionable jacket, modern sweater, neat hoodie, or stylish casual attire — keeping their face, age, and identity perfectly identical.";
 
 function buildPrompt(hasCelebImage: boolean, celebrity?: string): string {
   if (hasCelebImage) {
@@ -108,8 +108,42 @@ export async function POST(request: NextRequest) {
         : await generateWithGemini(selfieData, prompt, celebData);
 
     return NextResponse.json({ imageUrl });
-  } catch (err) {
-    console.error(err);
+  } catch (err: unknown) {
+    console.error("Star Me generation error:", err);
+
+    let isSafetyBlock = false;
+    if (err instanceof Error) {
+      const errMsg = err.message.toLowerCase();
+      if (
+        errMsg.includes("safety") ||
+        errMsg.includes("blocked") ||
+        errMsg.includes("moderation") ||
+        errMsg.includes("policy") ||
+        errMsg.includes("candidate")
+      ) {
+        isSafetyBlock = true;
+      }
+    }
+
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: string }).code === "moderation_blocked"
+    ) {
+      isSafetyBlock = true;
+    }
+
+    if (isSafetyBlock) {
+      return NextResponse.json(
+        {
+          error: "safety_blocked",
+          message: "AI 안전 정책(미성년자 보호 또는 교복 감지)에 의해 생성이 제한되었습니다. 얼굴이 선명하게 나오고 교복이 아닌 일반 일상복을 입은 사진으로 다시 시도해 주세요.",
+        },
+        { status: 422 }
+      );
+    }
+
     return NextResponse.json({ error: "이미지 생성에 실패했습니다. 다시 시도해주세요." }, { status: 500 });
   }
 }

@@ -70,7 +70,7 @@ export default function StarMePage() {
   const [celebrityImage, setCelebrityImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useState<ModelOption>("nanobanana2");
+  const [model, setModel] = useState<ModelOption>("Duct Tape");
 
   const chosen = CELEBRITIES.includes(celebrity) ? celebrity : customInput.trim();
   const chosenLabel = chosen || (celebrityImage ? "업로드한 연예인" : "");
@@ -89,7 +89,7 @@ export default function StarMePage() {
         body: JSON.stringify({ imageBase64: snapshot, celebrity: chosen, celebrityImageBase64: celebrityImage, model }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "생성 실패");
+      if (!res.ok) throw new Error(data.message ?? data.error ?? "생성 실패");
       setResultImage(data.imageUrl);
       setStep("result");
     } catch (err) {
@@ -368,8 +368,33 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
         </div>
 
         {error && (
-          <div style={{ marginTop: 16, padding: "14px 18px", background: "#FFF0F0", borderRadius: "var(--r-lg)", color: "#C0392B", fontSize: 14, fontWeight: 600 }}>
-            {error}
+          <div style={{ marginTop: 16, padding: "18px 20px", background: "#FFF0F0", border: "1px solid #FADBD8", borderRadius: "var(--r-lg)", color: "#C0392B", fontSize: 14 }}>
+            <div style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 15 }}>
+              <Icon name="shield" size={18} stroke={2.5} />
+              {error.includes("안전 정책") ? "AI 생성 일시 제한 안내" : "오류가 발생했습니다"}
+            </div>
+            <div style={{ fontWeight: 600, lineHeight: 1.5, marginBottom: error.includes("안전 정책") ? 12 : 0 }}>
+              {error}
+            </div>
+            {error.includes("안전 정책") && (
+              <div style={{
+                marginTop: 10, paddingTop: 12, borderTop: "1px dashed rgba(192, 57, 43, 0.2)",
+                display: "flex", flexDirection: "column", gap: 8, color: "#7B241C", fontSize: 13, fontWeight: 500
+              }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0 }}>👚</span>
+                  <span><strong>사복 사진 권장:</strong> 교복(학생복)은 AI 모델의 미성년자 보호 필터에 의해 차단될 확률이 매우 높습니다. 일반 일상 사복을 입은 상태로 다시 촬영/업로드해 보세요.</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0 }}>📸</span>
+                  <span><strong>선명한 얼굴 정면 촬영:</strong> 선글라스, 마스크, 모자, 손가락 브이 등으로 얼굴 일부가 과도하게 가려지면 검열 시스템이 오작동하기 쉽습니다. 밝은 곳에서 선명한 얼굴로 다시 촬영해 보세요.</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0 }}>⚙️</span>
+                  <span><strong>AI 엔진 변경:</strong> 바로 아래의 <strong>AI 모델 선택</strong> 항목에서 다른 엔진(<strong>Duct Tape</strong> <OpenAILogo size={14} /> 또는 <strong>nanobanana2</strong> <GeminiLogo size={14} />)으로 모델을 변경하여 다시 인생사진 만들기를 시도해 보세요. 모델에 따라 안전 필터의 허용 범위가 다릅니다.</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -378,32 +403,6 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
             ✨ AI 모델 선택
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            {/* nanobanana2 — Gemini */}
-            <button
-              onClick={() => setModel("nanobanana2")}
-              style={{
-                flex: 1, padding: "14px 12px",
-                borderRadius: "var(--r-lg)", cursor: "pointer",
-                background: model === "nanobanana2"
-                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
-                  : "var(--paper)",
-                border: model === "nanobanana2"
-                  ? "2px solid #4285F4"
-                  : "2px solid var(--hairline)",
-                transition: "all 200ms var(--ease)",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
-              }}
-            >
-              <GeminiLogo size={28} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
-                nanobanana2
-              </span>
-              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
-                Google Gemini
-              </span>
-            </button>
-
             {/* Duct Tape — OpenAI */}
             <button
               onClick={() => setModel("Duct Tape")}
@@ -427,6 +426,32 @@ function ConfirmWithSelect({ snapshot, error, celebrity, setCelebrity, customInp
               </span>
               <span style={{ fontSize: 11, color: model === "Duct Tape" ? "#10a37f" : "var(--ink-3)", fontWeight: 500 }}>
                 OpenAI GPT
+              </span>
+            </button>
+
+            {/* nanobanana2 — Gemini */}
+            <button
+              onClick={() => setModel("nanobanana2")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "nanobanana2"
+                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
+                  : "var(--paper)",
+                border: model === "nanobanana2"
+                  ? "2px solid #4285F4"
+                  : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
+              }}
+            >
+              <GeminiLogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                nanobanana2
+              </span>
+              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
+                Google Gemini
               </span>
             </button>
           </div>
@@ -506,34 +531,68 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
   onRestart: () => void; onHome: () => void;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [framedImage, setFramedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const generateFramed = async () => {
+      if (!printRef.current) return;
+      try {
+        // Wait 300ms for images to render fully before taking snapshot
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        const dataUrl = canvas.toDataURL("image/png");
+        setFramedImage(dataUrl);
+      } catch (err) {
+        console.error("Failed to pre-generate framed image:", err);
+      }
+    };
+    generateFramed();
+  }, [resultImage]);
 
   const handleDownload = () => {
+    const activeImage = framedImage ?? resultImage;
     const link = document.createElement("a");
-    link.download = `star-me-${celebrity.replace(/\s/g, "-")}.png`;
-    link.href = resultImage;
+    link.download = `star-me-${celebrity.replace(/\s/g, "-")}-A4.png`;
+    link.href = activeImage;
     link.click();
   };
 
-  const handlePrint = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
-    const dataUrl = canvas.toDataURL("image/png");
+  const handlePrint = () => {
+    const activeImage = framedImage ?? resultImage;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
 <html>
   <head>
-    <title>Star Me 결과</title>
+    <title>Star Me 인생사진 결과</title>
     <style>
       @page { size: A4 portrait; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 210mm; height: 297mm; background: #fff; }
-      img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      img {
+        display: block;
+        width: 210mm;
+        height: 297mm;
+        object-fit: contain;
+      }
     </style>
   </head>
   <body>
-    <img src="${dataUrl}" />
-    <script>window.onload = () => { window.print(); window.close(); }<\/script>
+    <img src="${activeImage}" />
+    <script>
+      window.onload = () => {
+        window.print();
+        setTimeout(() => { window.close(); }, 500);
+      }
+    <\/script>
   </body>
 </html>`);
     win.document.close();
@@ -548,33 +607,61 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
       </div>
 
       <div style={{ maxWidth: 700, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-        <div ref={printRef} className="print-frame" style={{ padding: 28, background: "#FFFFFF" }}>
+        <div ref={printRef} className="print-frame" style={{
+          width: "100%",
+          aspectRatio: "1 / 1.414",
+          padding: "28px",
+          background: "#FFFFFF",
+          display: "flex",
+          flexDirection: "column",
+          boxSizing: "border-box",
+        }}>
           {/* Header — outside the image */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div>
-              <div className="t-en" style={{ color: "var(--sun-deep)", fontSize: 14 }}>Glow AI Studio · Star Me</div>
-              {celebrity && (
-                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>with {celebrity}</div>
-              )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexShrink: 0 }}>
+            {/* School Logo */}
+            <img
+              src="/school-logo.png"
+              alt="서대전여고 로고"
+              style={{ width: 44, height: 44, objectFit: "contain", borderRadius: "50%", background: "#ffffff", padding: 2, border: "1.5px solid #FFCCD9" }}
+            />
+            
+            {/* Event Info */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#FF1E76" }}>
+                서대전여자고등학교 정보교과
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginTop: 1 }}>
+                2026 교육과정 박람회
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--ink-3)", fontFamily: "monospace" }}>
-              {new Date().toLocaleDateString("ko-KR")}
+
+            {/* Celebrity & Date */}
+            <div style={{ textAlign: "right" }}>
+              {celebrity && (
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>with {celebrity}</div>
+              )}
+              <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", marginTop: 2, fontWeight: 600 }}>
+                {new Date().toLocaleDateString("ko-KR")}
+              </div>
             </div>
           </div>
 
-          {/* Generated image — phone portrait ratio (2:3) */}
+          {/* Generated image — fill remaining space */}
           <div style={{
-            width: "100%", aspectRatio: "2 / 3",
-            borderRadius: "var(--r-md)", overflow: "hidden",
+            flex: 1,
+            width: "100%",
+            borderRadius: "var(--r-md)",
+            overflow: "hidden",
             border: "1px solid var(--hairline)",
+            position: "relative",
           }}>
-            <img src={resultImage} alt="인생사진 결과" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={resultImage} alt="인생사진 결과" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
         </div>
 
         {/* 이메일 전송 */}
         <EmailSender
-          imageBase64={resultImage}
+          imageBase64={framedImage ?? resultImage}
           featureName={FEATURE.en}
           featureKo={FEATURE.ko}
         />
