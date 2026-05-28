@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       imageUrl = `data:${mimeType};base64,${data}`;
     } else {
       const imageBuffer = Buffer.from(base64Data, "base64");
-      const imageFile = await toFile(imageBuffer, "portrait.jpg", { type: "image/jpeg" });
+      const imageFile = await toFile(imageBuffer, "portrait.png", { type: "image/png" });
       const openaiResult = await openaiClient.images.edit({
         model: "gpt-image-2",
         image: imageFile,

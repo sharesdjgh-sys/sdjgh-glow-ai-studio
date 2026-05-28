@@ -35,7 +35,7 @@ const resizeBase64Image = (base64Str: string, maxWidth = 1024, maxHeight = 1024)
       if (ctx) {
         ctx.drawImage(img, 0, 0, width, height);
       }
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = () => {
       resolve(base64Str);
