@@ -197,7 +197,7 @@ function FeaturePreview({ id, accent, accentSoft, swatches }: {
         <img
           src="/color-me-home-preview.png"
           alt="퍼스널 컬러 분석 샘플"
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         />
       </div>
     );

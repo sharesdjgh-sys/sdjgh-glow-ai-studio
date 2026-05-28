@@ -257,29 +257,6 @@ function Confirm({ snapshot, error, model, setModel, onRetake, onConfirm }: {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
-              onClick={() => setModel("nanobanana2")}
-              style={{
-                flex: 1, padding: "14px 12px",
-                borderRadius: "var(--r-lg)", cursor: "pointer",
-                background: model === "nanobanana2"
-                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
-                  : "var(--paper)",
-                border: model === "nanobanana2" ? "2px solid #4285F4" : "2px solid var(--hairline)",
-                transition: "all 200ms var(--ease)",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
-              }}
-            >
-              <GeminiLogo size={28} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
-                nanobanana2
-              </span>
-              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
-                Google Gemini
-              </span>
-            </button>
-
-            <button
               onClick={() => setModel("Duct Tape")}
               style={{
                 flex: 1, padding: "14px 12px",
@@ -299,6 +276,29 @@ function Confirm({ snapshot, error, model, setModel, onRetake, onConfirm }: {
               </span>
               <span style={{ fontSize: 11, color: model === "Duct Tape" ? "#10a37f" : "var(--ink-3)", fontWeight: 500 }}>
                 OpenAI GPT
+              </span>
+            </button>
+
+            <button
+              onClick={() => setModel("nanobanana2")}
+              style={{
+                flex: 1, padding: "14px 12px",
+                borderRadius: "var(--r-lg)", cursor: "pointer",
+                background: model === "nanobanana2"
+                  ? "linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%)"
+                  : "var(--paper)",
+                border: model === "nanobanana2" ? "2px solid #4285F4" : "2px solid var(--hairline)",
+                transition: "all 200ms var(--ease)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                boxShadow: model === "nanobanana2" ? "0 0 0 3px rgba(66,133,244,0.15)" : "none",
+              }}
+            >
+              <GeminiLogo size={28} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: model === "nanobanana2" ? "#1a73e8" : "var(--ink-2)", letterSpacing: "-0.01em" }}>
+                nanobanana2
+              </span>
+              <span style={{ fontSize: 11, color: model === "nanobanana2" ? "#4285F4" : "var(--ink-3)", fontWeight: 500 }}>
+                Google Gemini
               </span>
             </button>
           </div>
@@ -555,8 +555,18 @@ function Result({ result, onRestart, onHome }: {
             border: "1.5px solid var(--lavender-soft)",
             position: "relative",
             boxSizing: "border-box",
+            background: "#F5F5F7",
           }}>
-            <img src={result.imageUrl} alt="퍼스널 컬러 분석 결과" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img 
+              src={result.imageUrl} 
+              alt="퍼스널 컬러 분석 결과" 
+              style={{ 
+                width: "100%", 
+                height: "100%", 
+                objectFit: "contain", 
+                display: "block" 
+              }} 
+            />
           </div>
         </div>
 
