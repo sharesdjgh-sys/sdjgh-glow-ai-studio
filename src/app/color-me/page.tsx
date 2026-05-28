@@ -10,6 +10,39 @@ import PrivacyChip from "@/components/glow/PrivacyChip";
 import WebcamCapture from "@/components/glow/WebcamCapture";
 import EmailSender from "@/components/glow/EmailSender";
 
+const resizeBase64Image = (base64Str: string, maxWidth = 1024, maxHeight = 1024): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
+
 interface ColorResult {
   imageUrl: string;
 }
@@ -55,7 +88,23 @@ export default function ColorMePage() {
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useState<ModelOption>("Duct Tape");
 
-  const handleCapture = (snap: string | null) => { setSnapshot(snap); setStep("confirm"); };
+  const handleCapture = async (snap: string | null) => {
+    if (!snap) {
+      setSnapshot(null);
+      setStep("confirm");
+      return;
+    }
+    setStep("loading");
+    try {
+      const resized = await resizeBase64Image(snap, 1024, 1024);
+      setSnapshot(resized);
+      setStep("confirm");
+    } catch (err) {
+      console.error("Failed to resize snapshot:", err);
+      setSnapshot(snap);
+      setStep("confirm");
+    }
+  };
 
   const handleConfirm = async () => {
     setStep("loading");
