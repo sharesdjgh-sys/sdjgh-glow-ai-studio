@@ -322,36 +322,88 @@ function Result({ resultImage, snapshot, onRestart, onHome }: {
   onRestart: () => void; onHome: () => void;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [framedImage, setFramedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const generateFramed = async () => {
+      if (!printRef.current) return;
+      try {
+        // Wait 300ms for images to render fully before taking snapshot
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        const dataUrl = canvas.toDataURL("image/png");
+        setFramedImage(dataUrl);
+      } catch (err) {
+        console.error("Failed to pre-generate framed image:", err);
+      }
+    };
+    generateFramed();
+  }, [resultImage]);
 
   const handleDownload = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: null, useCORS: true });
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? resultImage;
     const link = document.createElement("a");
-    link.download = "toon-me-result.png";
-    link.href = canvas.toDataURL("image/png");
+    link.download = `toon-me-result-A4.png`;
+    link.href = finalImage;
     link.click();
   };
 
   const handlePrint = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
-    const dataUrl = canvas.toDataURL("image/png");
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? resultImage;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
 <html>
   <head>
-    <title>Toon Me 결과</title>
+    <title>Toon Me 인생사진 결과</title>
     <style>
       @page { size: A4 portrait; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 210mm; height: 297mm; background: #fff; }
-      img { display: block; width: 210mm; height: 297mm; object-fit: contain; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      img {
+        display: block;
+        width: 210mm;
+        height: 297mm;
+        object-fit: contain;
+      }
     </style>
   </head>
   <body>
-    <img src="${dataUrl}" />
-    <script>window.onload = () => { window.print(); window.close(); }<\/script>
+    <img src="${finalImage}" />
+    <script>
+      window.onload = () => {
+        window.print();
+        setTimeout(() => { window.close(); }, 500);
+      }
+    <\/script>
   </body>
 </html>`);
     win.document.close();
@@ -366,29 +418,83 @@ function Result({ resultImage, snapshot, onRestart, onHome }: {
       </div>
 
       <div style={{ maxWidth: 700, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-        <div ref={printRef} className="print-frame" style={{ padding: 28, background: "#FFFFFF" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
-            <div className="t-en" style={{ color: "var(--mint-deep)", fontSize: 14 }}>Pixar-style Emotions</div>
+        <div ref={printRef} className="print-frame" style={{
+          width: "100%",
+          aspectRatio: "1 / 1.414",
+          padding: "28px",
+          background: "#FFFFFF",
+          display: "block",
+          position: "relative",
+          boxSizing: "border-box",
+        }}>
+          {/* Header — outside the image */}
+          <div style={{ position: "relative", width: "100%", height: 50, marginBottom: 16, boxSizing: "border-box" }}>
+            {/* School Logo */}
+            <div style={{
+              position: "absolute",
+              top: 5,
+              left: 0,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1.5px solid #FFCCD9",
+              background: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              boxSizing: "border-box"
+            }}>
+              <img 
+                src="/school-logo.png" 
+                alt="School Logo" 
+                style={{ 
+                  width: "90%", 
+                  height: "90%", 
+                  objectFit: "contain", 
+                  display: "block" 
+                }} 
+              />
+            </div>
+            
+            {/* Event Info */}
+            <div style={{ position: "absolute", top: 5, left: 52, height: 40, boxSizing: "border-box" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#FF1E76", lineHeight: "18px", margin: 0, padding: 0 }}>
+                서대전여자고등학교 정보교과
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--ink)", lineHeight: "22px", margin: 0, padding: 0 }}>
+                2026 교육과정 박람회
+              </div>
+            </div>
+
+            {/* Date Column */}
+            <div style={{ position: "absolute", top: 5, right: 0, height: 40, textAlign: "right", boxSizing: "border-box" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 800, fontSize: "15px", color: "var(--mint-deep)", lineHeight: "18px", margin: 0, padding: 0 }}>
+                Toon Me
+              </div>
+              <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", fontWeight: 600, lineHeight: "22px", margin: 0, padding: 0 }}>
+                {new Date().toLocaleDateString("ko-KR")}
+              </div>
+            </div>
           </div>
 
-          {/* AI-generated composite image — A4 portrait ratio */}
+          {/* Generated image — fill remaining space */}
           <div style={{
-            margin: "0 auto", width: "100%", aspectRatio: "1 / 1.414",
-            borderRadius: "var(--r-md)", overflow: "hidden",
-            border: "1px solid var(--hairline)",
+            width: "100%",
+            height: "calc(100% - 66px)",
+            borderRadius: "var(--r-md)",
+            overflow: "hidden",
+            border: "1.5px solid var(--mint-soft)",
+            position: "relative",
+            boxSizing: "border-box",
           }}>
-            <img src={resultImage} alt="픽사 9감정 결과" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-
-          <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--ink-3)", fontSize: 12 }}>
-            <span>Glow AI Studio · Toon Me</span>
-            <span>{new Date().toLocaleDateString("ko-KR")}</span>
+            <img src={resultImage} alt="픽사 9감정 결과" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
         </div>
 
         {/* 이메일 전송 */}
         <EmailSender
-          imageBase64={resultImage}
+          imageBase64={framedImage ?? resultImage}
           featureName={FEATURE.en}
           featureKo={FEATURE.ko}
         />
@@ -417,3 +523,4 @@ function Result({ resultImage, snapshot, onRestart, onHome }: {
     </div>
   );
 }
+

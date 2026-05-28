@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import html2canvas from "html2canvas";
 import Icon from "@/components/glow/Icon";
 import FauxPortrait from "@/components/glow/FauxPortrait";
 import KioskHeader from "@/components/glow/KioskHeader";
@@ -388,30 +389,90 @@ function Result({ result, onRestart, onHome }: {
   result: ColorResult;
   onRestart: () => void; onHome: () => void;
 }) {
-  const handleDownload = () => {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [framedImage, setFramedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const generateFramed = async () => {
+      if (!printRef.current) return;
+      try {
+        // Wait 300ms for images to render fully before taking snapshot
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        const dataUrl = canvas.toDataURL("image/png");
+        setFramedImage(dataUrl);
+      } catch (err) {
+        console.error("Failed to pre-generate framed image:", err);
+      }
+    };
+    generateFramed();
+  }, [result.imageUrl]);
+
+  const handleDownload = async () => {
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? result.imageUrl;
     const link = document.createElement("a");
-    link.download = "color-me-result.png";
-    link.href = result.imageUrl;
+    link.download = `color-me-result-A4.png`;
+    link.href = finalImage;
     link.click();
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? result.imageUrl;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8"/>
-<title>퍼스널 컬러 분석 결과</title>
-<style>
-  @page { size: A4 portrait; margin: 0; }
-  html, body { margin: 0; padding: 0; background: white; width: 100%; height: 100%; }
-  img { display: block; width: auto; height: 100vh; max-width: 100vw; margin: 0 auto; object-fit: contain; }
-</style>
-</head>
-<body>
-<img src="${result.imageUrl}" onload="window.print(); window.close();" />
-</body>
+  <head>
+    <title>Color Me 인생사진 결과</title>
+    <style>
+      @page { size: A4 portrait; margin: 0; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      img {
+        display: block;
+        width: 210mm;
+        height: 297mm;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="${finalImage}" />
+    <script>
+      window.onload = () => {
+        window.print();
+        setTimeout(() => { window.close(); }, 500);
+      }
+    <\/script>
+  </body>
 </html>`);
     win.document.close();
   };
@@ -424,21 +485,89 @@ function Result({ result, onRestart, onHome }: {
         <p className="t-body" style={{ marginTop: 6 }}>다운로드하거나 바로 프린트해서 가져가세요.</p>
       </div>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-        <div className="print-frame" style={{ borderRadius: "var(--r-2xl)", overflow: "hidden", boxShadow: "var(--shadow-3)" }}>
-          <img
-            src={result.imageUrl}
-            alt="퍼스널 컬러 분석 결과"
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
+      <div style={{ maxWidth: 700, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+        <div ref={printRef} className="print-frame" style={{
+          width: "100%",
+          aspectRatio: "1 / 1.414",
+          padding: "28px",
+          background: "#FFFFFF",
+          display: "block",
+          position: "relative",
+          boxSizing: "border-box",
+        }}>
+          {/* Header — outside the image */}
+          <div style={{ position: "relative", width: "100%", height: 50, marginBottom: 16, boxSizing: "border-box" }}>
+            {/* School Logo */}
+            <div style={{
+              position: "absolute",
+              top: 5,
+              left: 0,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1.5px solid #FFCCD9",
+              background: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              boxSizing: "border-box"
+            }}>
+              <img 
+                src="/school-logo.png" 
+                alt="School Logo" 
+                style={{ 
+                  width: "90%", 
+                  height: "90%", 
+                  objectFit: "contain", 
+                  display: "block" 
+                }} 
+              />
+            </div>
+            
+            {/* Event Info */}
+            <div style={{ position: "absolute", top: 5, left: 52, height: 40, boxSizing: "border-box" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#FF1E76", lineHeight: "18px", margin: 0, padding: 0 }}>
+                서대전여자고등학교 정보교과
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--ink)", lineHeight: "22px", margin: 0, padding: 0 }}>
+                2026 교육과정 박람회
+              </div>
+            </div>
+
+            {/* Date Column */}
+            <div style={{ position: "absolute", top: 5, right: 0, height: 40, textAlign: "right", boxSizing: "border-box" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 800, fontSize: "15px", color: "var(--lavender-deep)", lineHeight: "18px", margin: 0, padding: 0 }}>
+                Color Me
+              </div>
+              <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", fontWeight: 600, lineHeight: "22px", margin: 0, padding: 0 }}>
+                {new Date().toLocaleDateString("ko-KR")}
+              </div>
+            </div>
+          </div>
+
+          {/* Generated image — fill remaining space */}
+          <div style={{
+            width: "100%",
+            height: "calc(100% - 66px)",
+            borderRadius: "var(--r-md)",
+            overflow: "hidden",
+            border: "1.5px solid var(--lavender-soft)",
+            position: "relative",
+            boxSizing: "border-box",
+          }}>
+            <img src={result.imageUrl} alt="퍼스널 컬러 분석 결과" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </div>
         </div>
 
+        {/* 이메일 전송 */}
         <EmailSender
-          imageBase64={result.imageUrl}
+          imageBase64={framedImage ?? result.imageUrl}
           featureName={FEATURE.en}
           featureKo={FEATURE.ko}
         />
 
+        {/* Actions */}
         <div style={{
           display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
           padding: "20px 24px", background: "var(--paper)",
@@ -462,3 +591,4 @@ function Result({ result, onRestart, onHome }: {
     </div>
   );
 }
+

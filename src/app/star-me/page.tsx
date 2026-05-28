@@ -549,16 +549,36 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
     generateFramed();
   }, [resultImage]);
 
-  const handleDownload = () => {
-    const activeImage = framedImage ?? resultImage;
+  const handleDownload = async () => {
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? resultImage;
     const link = document.createElement("a");
     link.download = `star-me-${celebrity.replace(/\s/g, "-")}-A4.png`;
-    link.href = activeImage;
+    link.href = finalImage;
     link.click();
   };
 
-  const handlePrint = () => {
-    const activeImage = framedImage ?? resultImage;
+  const handlePrint = async () => {
+    let activeImage = framedImage;
+    if (!activeImage && printRef.current) {
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+        activeImage = canvas.toDataURL("image/png");
+        setFramedImage(activeImage);
+      } catch (err) {
+        console.error("Failed to capture framed image on-demand:", err);
+      }
+    }
+    const finalImage = activeImage ?? resultImage;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
@@ -586,7 +606,7 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
     </style>
   </head>
   <body>
-    <img src="${activeImage}" />
+    <img src="${finalImage}" />
     <script>
       window.onload = () => {
         window.print();
@@ -612,48 +632,79 @@ function Result({ resultImage, snapshot, celebrity, onRestart, onHome }: {
           aspectRatio: "1 / 1.414",
           padding: "28px",
           background: "#FFFFFF",
-          display: "flex",
-          flexDirection: "column",
+          display: "block",
+          position: "relative",
           boxSizing: "border-box",
         }}>
           {/* Header — outside the image */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ position: "relative", width: "100%", height: 50, marginBottom: 16, boxSizing: "border-box" }}>
             {/* School Logo */}
-            <img
-              src="/school-logo.png"
-              alt="서대전여고 로고"
-              style={{ width: 44, height: 44, objectFit: "contain", borderRadius: "50%", background: "#ffffff", padding: 2, border: "1.5px solid #FFCCD9" }}
-            />
+            <div style={{
+              position: "absolute",
+              top: 5,
+              left: 0,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1.5px solid #FFCCD9",
+              background: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              boxSizing: "border-box"
+            }}>
+              <img 
+                src="/school-logo.png" 
+                alt="School Logo" 
+                style={{ 
+                  width: "90%", 
+                  height: "90%", 
+                  objectFit: "contain", 
+                  display: "block" 
+                }} 
+              />
+            </div>
             
             {/* Event Info */}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#FF1E76" }}>
+            <div style={{ position: "absolute", top: 5, left: 52, height: 40, boxSizing: "border-box" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#FF1E76", lineHeight: "18px", margin: 0, padding: 0 }}>
                 서대전여자고등학교 정보교과
               </div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginTop: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--ink)", lineHeight: "22px", margin: 0, padding: 0 }}>
                 2026 교육과정 박람회
               </div>
             </div>
 
-            {/* Celebrity & Date */}
-            <div style={{ textAlign: "right" }}>
-              {celebrity && (
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>with {celebrity}</div>
-              )}
-              <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", marginTop: 2, fontWeight: 600 }}>
-                {new Date().toLocaleDateString("ko-KR")}
+            {/* Celebrity & Date Column */}
+            <div style={{ position: "absolute", top: celebrity ? 3 : 5, right: 0, height: 40, textAlign: "right", boxSizing: "border-box" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 800, fontSize: "15px", color: "var(--sun-deep)", lineHeight: celebrity ? "15px" : "18px", margin: 0, padding: 0 }}>
+                Star Me
               </div>
+              {celebrity ? (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", lineHeight: "15px", margin: 0, padding: 0 }}>with {celebrity}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", fontWeight: 600, lineHeight: "14px", margin: 0, padding: 0 }}>
+                    {new Date().toLocaleDateString("ko-KR")}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "monospace", fontWeight: 600, lineHeight: "22px", margin: 0, padding: 0 }}>
+                  {new Date().toLocaleDateString("ko-KR")}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Generated image — fill remaining space */}
           <div style={{
-            flex: 1,
             width: "100%",
+            height: "calc(100% - 66px)",
             borderRadius: "var(--r-md)",
             overflow: "hidden",
-            border: "1px solid var(--hairline)",
+            border: "1.5px solid var(--sun-soft)",
             position: "relative",
+            boxSizing: "border-box",
           }}>
             <img src={resultImage} alt="인생사진 결과" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
